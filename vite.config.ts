@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "My App",
-        short_name: "MyApp",
+        name: "PokerGT",
+        short_name: "PGT",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
