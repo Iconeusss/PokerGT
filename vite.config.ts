@@ -9,6 +9,13 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
+      devOptions: {
+        enabled: true,
+      },
+      workbox: {
+        navigateFallback: null,
+        runtimeCaching: []
+      },
       manifest: {
         name: "PokerGT",
         short_name: "PGT",
