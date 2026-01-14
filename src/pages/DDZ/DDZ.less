@@ -1,16 +1,3 @@
-// --- 1. 基础重置与全局设置 ---
-*, *::before, *::after {
-  box-sizing: border-box; // 解决 padding 撑开宽度的问题
-}
-
-html, body, #root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100vh;
-  overflow-x: hidden; // 禁止横向滚动
-}
-
 // 颜色变量
 @color-primary: #dc2626;
 @color-secondary: #f59e0b;
@@ -28,250 +15,486 @@ html, body, #root {
 @color-text-muted: #6b7280;
 
 // 尺寸变量
-@card-width: 5rem;     // 增大默认尺寸，使其在 PC 端更美观
-@card-height: 7rem;
+@card-width: 1.6rem;
+@card-height: 3rem;
 @card-width-small: 2.5rem;
 @card-height-small: 3.5rem;
 @border-radius: 0.5rem;
 @border-radius-large: 1rem;
 
-// 动画与阴影
+// 阴影变量
 @shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 @shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+
+// 动画时间
 @transition-fast: 0.2s;
+@transition-normal: 0.3s;
 
-// --- 2. 容器布局 ---
+// 全局重置，确保 padding 不会撑开容器宽度
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
+// 确保父级节点也是全屏高度
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden; // 防止左右晃动
+}
+
+// 游戏容器
 .game-container {
   min-height: 100vh;
   width: 100%;
-  background: linear-gradient(to bottom right, @color-background, @color-background-light);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  //   max-width: 100vw;
+  background: linear-gradient(
+    to bottom right,
+    @color-background,
+    @color-background-light
+  );
+  padding: 1rem;
 }
 
 .game-wrapper {
-  width: 100%;
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
 }
 
+// 标题
 .game-title {
   font-size: 2.5rem;
   font-weight: bold;
   color: @color-text-light;
   text-align: center;
-  margin: 0 0 1rem 0;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  margin-bottom: 1rem;
 }
 
-// --- 3. 组件样式 ---
-
+// 信息框
 .info-box {
   background: #fef3c7;
   border-radius: @border-radius;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  box-shadow: @shadow-card;
-  .info-title { font-weight: bold; color: @color-text-dark; margin-bottom: 0.25rem; }
-  .info-text { color: #78716c; font-size: 0.9rem; margin: 0; }
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+
+  .info-title {
+    font-weight: bold;
+    color: @color-text-dark;
+    margin-bottom: 0.25rem;
+  }
+
+  .info-text {
+    color: #78716c;
+  }
 }
 
+// 消息框
 .message-box {
   background: @color-card-bg;
   border-radius: @border-radius;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
   text-align: center;
   box-shadow: @shadow-large;
-  .message-text { font-size: 1.25rem; font-weight: 700; color: @color-primary; margin: 0; }
+
+  .message-text {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: @color-text-dark;
+  }
 }
 
+// 按钮组
 .button-group {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
+// 按钮样式
 .btn {
-  padding: 0.6rem 1.8rem;
+  padding: 0.5rem 1.5rem;
   border-radius: @border-radius;
-  font-weight: 700;
+  font-weight: 600;
   border: none;
   cursor: pointer;
   transition: all @transition-fast;
-  box-shadow: @shadow-card;
-  text-transform: uppercase;
-
-  &:disabled { background: #9ca3af !important; cursor: not-allowed; transform: none !important; }
-  &:active { transform: scale(0.95); }
-
-  &.btn-primary { background: #2563eb; color: white; &:hover { background: #1d4ed8; } }
-  &.btn-landlord { background: @color-secondary; color: white; &:hover { background: darken(@color-secondary, 10%); } }
-  &.btn-pass { background: #4b5563; color: white; &:hover { background: #374151; } }
-  &.btn-play { background: @color-success; color: white; &:hover { background: #15803d; } }
-  &.btn-pass-card { background: #ea580c; color: white; &:hover { background: #c2410c; } }
-}
-
-// --- 4. 游戏核心区域 ---
-
-.base-cards-panel {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(4px);
-  border-radius: @border-radius;
-  padding: 0.5rem;
-  margin: 0 auto 1.5rem;
-  width: fit-content;
-  
-  .panel-title { color: white; font-size: 0.9rem; text-align: center; margin-bottom: 0.5rem; }
-  .base-cards-container { display: flex; gap: 0.5rem; }
-  .card-placeholder {
-    width: 2.5rem; height: 3.5rem; border-radius: 4px; border: 2px dashed rgba(255,255,255,0.5);
-  }
-}
-
-.game-area {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  min-height: 20rem;
-
-  .side-player {
-    width: 150px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .center-area {
-    flex: 1;
-    min-width: 0; // 允许在 flex 容器中收缩
-  }
-}
-
-.player-info {
-  background: @color-card-bg;
-  border-radius: @border-radius;
-  padding: 1.25rem;
-  text-align: center;
   box-shadow: @shadow-large;
-  border: 3px solid transparent;
 
-  &.active { border-color: @color-secondary; transform: scale(1.05); }
-  &.landlord { background: #fffbeb; border-color: @color-primary; }
-  .player-name { margin: 0 0 0.5rem; font-size: 1.1rem; }
-  .player-cards-count { font-size: 1.5rem; font-weight: 800; color: @color-primary; margin: 0; }
-}
-
-.table-area {
-  background: radial-gradient(circle, #166534 0%, #064e3b 100%);
-  border: 8px solid #064e3b;
-  border-radius: 50%; // 牌桌做成椭圆/圆形更有感觉
-  padding: 2rem;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
-
-  .table-cards {
-    display: flex;
-    justify-content: center;
-    // 出牌区的卡片稍微重叠一点
-    .card { margin-left: -1.5rem; &:first-child { margin-left: 0; } }
+  &:disabled {
+    background: #9ca3af !important;
+    cursor: not-allowed;
   }
-}
 
-// --- 5. 底部手牌布局 (优化核心) ---
+  &.btn-primary {
+    background: #2563eb;
+    color: white;
 
-.player-hand {
-  margin-top: auto;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1.5rem;
-  border-radius: @border-radius-large;
+    &:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+  }
 
-  .hand-cards {
-    display: flex;
-    justify-content: center;
-    padding-top: 1rem;
-    min-height: @card-height + 2rem;
+  &.btn-landlord {
+    background: @color-primary;
+    color: white;
+    font-size: 1.25rem;
+    padding: 0.75rem 2rem;
 
-    // 重点：卡片重叠排布
-    .card {
-      margin-left: -3rem; // 核心：负边距实现重叠
-      &:first-child { margin-left: 0; }
-      z-index: 1;
-      
-      &:hover {
-        z-index: 100; // 鼠标悬停在最前
-      }
+    &:hover:not(:disabled) {
+      background: #b91c1c;
+    }
+  }
+
+  &.btn-pass {
+    background: #4b5563;
+    color: white;
+    font-size: 1.25rem;
+    padding: 0.75rem 2rem;
+
+    &:hover:not(:disabled) {
+      background: #374151;
+    }
+  }
+
+  &.btn-play {
+    background: @color-success;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: #15803d;
+    }
+  }
+
+  &.btn-pass-card {
+    background: #ea580c;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: #c2410c;
     }
   }
 }
 
-// --- 6. 卡片基础样式 ---
+// 底牌区域
+.base-cards-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
 
+.base-cards-panel {
+  background: @color-card-bg;
+  border-radius: @border-radius;
+  padding: 0.75rem;
+  box-shadow: @shadow-large;
+
+  .panel-title {
+    font-weight: bold;
+    color: @color-text-dark;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .base-cards-container {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .card-placeholder {
+    width: @card-width;
+    height: @card-height;
+    border-radius: @border-radius;
+    border: 2px solid #9ca3af;
+    background: #e5e7eb;
+  }
+}
+
+// 主游戏区域布局
+.game-area {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+// 侧边玩家
+.side-player {
+  flex: 0 0 100px;
+  z-index: 10;
+
+  &.left {
+    @media (max-width: 768px) {
+      order: 1;
+    }
+  }
+
+  &.right {
+    @media (max-width: 768px) {
+      order: 2;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex: 1;
+    width: 100%;
+  }
+}
+
+// 中间区域
+.center-area {
+  flex: 1;
+  min-width: 0;
+  z-index: 1;
+  //   margin: 0 1rem;
+
+  @media (max-width: 768px) {
+    order: 3;
+    width: 100%;
+  }
+}
+
+// 玩家信息卡片
+.player-info {
+  background: @color-card-bg;
+  border-radius: @border-radius;
+  padding: 1rem;
+  box-shadow: @shadow-large;
+  transition: all @transition-fast;
+
+  &.active {
+    border: 4px solid @color-secondary;
+  }
+
+  &.landlord {
+    background: #fef2f2;
+    border: 2px solid @color-primary;
+  }
+
+  .player-name {
+    font-weight: bold;
+    color: @color-text-dark;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+  }
+
+  .player-cards-count {
+    color: @color-text-muted;
+    font-size: 0.875rem;
+    margin: 0;
+  }
+}
+
+// 牌桌区域
+.table-area {
+  background: linear-gradient(to bottom right, #15803d, #166534);
+  border-radius: @border-radius-large;
+  padding: 2rem 1.5rem;
+  box-shadow: @shadow-large;
+  min-height: 16rem;
+  //   width: 100%;
+
+  .table-title {
+    color: @color-text-light;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .table-info {
+    color: #86efac;
+    text-align: center;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+  }
+
+  .table-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .table-empty {
+    color: #86efac;
+    text-align: center;
+    padding: 3rem 0;
+    font-size: 1.125rem;
+  }
+}
+
+// 玩家手牌区域
+.player-hand {
+  background: @color-card-bg;
+  border-radius: @border-radius-large;
+  padding: 1.5rem;
+  box-shadow: @shadow-large;
+  //   width: 100%;
+
+  &.landlord {
+    background: #fef2f2;
+    border: 4px solid @color-primary;
+  }
+
+  .hand-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: @color-text-dark;
+    margin-bottom: 1rem;
+    text-align: center;
+
+    .your-turn {
+      color: @color-success;
+      margin-left: 0.5rem;
+    }
+  }
+
+  .hand-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+}
+
+// 卡牌样式
 .card {
+  display: inline-block;
   width: @card-width;
   height: @card-height;
-  background: white;
-  border-radius: 6px;
-  border: 1px solid @color-border;
+  border-radius: @border-radius;
+  border: 2px solid @color-border;
+  margin: 0.125rem;
+  transition: all @transition-fast;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: @color-card-bg;
   box-shadow: @shadow-card;
-  transition: transform 0.2s, box-shadow 0.2s;
-  user-select: none;
-  position: relative;
+  font-weight: bold;
+  cursor: default;
 
-  &.red { color: @color-card-red; }
-  &.black { color: @color-card-black; }
-  &.joker { color: @color-joker; }
+  &.small {
+    width: @card-width-small;
+    height: @card-height-small;
 
-  &.selectable { cursor: pointer; }
+    .card-suit {
+      font-size: 0.625rem;
+    }
 
-  &.selected {
-    transform: translateY(-1.5rem) !important; // 选中的牌往上跳
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-    border: 2px solid @color-border-active;
+    .card-rank {
+      font-size: 1rem;
+    }
+
+    .joker-symbol {
+      font-size: 1.125rem;
+    }
   }
 
-  .card-suit { font-size: 1.2rem; }
-  .card-rank { font-size: 2rem; font-weight: 900; line-height: 1; }
+  &.red {
+    color: @color-card-red;
+  }
+
+  &.black {
+    color: @color-card-black;
+  }
+
+  &.joker {
+    color: @color-joker;
+  }
+
+  &.selected {
+    background: #dbeafe;
+    border-color: @color-border-active;
+    transform: translateY(-0.75rem);
+  }
+
+  &.selectable {
+    cursor: pointer;
+
+    &:hover {
+      border-color: @color-border-active;
+      transform: translateY(-0.25rem);
+    }
+
+    &.selected:hover {
+      transform: translateY(-0.75rem);
+    }
+  }
+
+  .card-suit {
+    font-size: 0.75rem;
+  }
+
+  .card-rank {
+    font-size: 1.5rem;
+  }
+
+  .joker-symbol {
+    font-size: 2rem;
+  }
 }
 
-// --- 7. 响应式适配 ---
-
+// 响应式设计
 @media (max-width: 768px) {
-  .game-container { padding: 0.5rem; }
-  
-  .game-area {
-    flex-direction: column;
-    align-items: center;
-    .side-player { width: 100%; flex-direction: row; gap: 1rem; }
-    .table-area { border-radius: @border-radius; min-height: 12rem; }
+  .game-title {
+    font-size: 2rem;
   }
 
   .card {
     width: 3rem;
     height: 4.5rem;
-    .card-rank { font-size: 1.2rem; }
-    .card-suit { font-size: 0.8rem; }
+
+    .card-rank {
+      font-size: 1.25rem;
+    }
+
+    .joker-symbol {
+      font-size: 1.5rem;
+    }
   }
 
-  .player-hand .hand-cards .card {
-    margin-left: -1.8rem; // 手机端重叠更多
+  .btn-landlord,
+  .btn-pass {
+    font-size: 1rem;
+    padding: 0.5rem 1.5rem;
+  }
+
+  .table-area {
+    min-height: 12rem;
+    padding: 1.5rem 1rem;
+
+    .table-title {
+      font-size: 1.25rem;
+    }
+  }
+
+  .player-hand {
+    padding: 1rem;
+
+    .hand-title {
+      font-size: 1.25rem;
+    }
+  }
+
+  .side-player {
+    flex: 0 0 auto;
   }
 }
