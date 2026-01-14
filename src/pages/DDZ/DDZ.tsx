@@ -182,7 +182,7 @@ const DouDiZhuGame: React.FC = () => {
 
   // --- 核心动作封装 ---
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
-    const type = getCardType(cardsToPlay);
+    // const type = getCardType(cardsToPlay);
     const newPlayers = [...players];
     newPlayers[playerId].cards = newPlayers[playerId].cards.filter(card => !cardsToPlay.find(c => c.id === card.id));
     
