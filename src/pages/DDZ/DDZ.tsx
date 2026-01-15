@@ -995,16 +995,16 @@ const DouDiZhuGame: React.FC = () => {
                 </span>
               </h3>
               {lastPlayedCards.length > 0 ? (
-                <div>
+                <>
                   <p className="table-info">
                     {players[lastPlayerId]?.name} 出的牌
                   </p>
-                  <div className="table-cards">
+                  <div className={`table-cards ${lastPlayedCards.length <= 5 ? 'scale-large' : lastPlayedCards.length <= 10 ? 'scale-medium' : 'scale-small'}`}>
                     {lastPlayedCards.map((c) =>
                       renderCard(c, false, false, "normal")
                     )}
                   </div>
-                </div>
+                </>
               ) : (
                 <p className="table-empty">等待出牌...</p>
               )}

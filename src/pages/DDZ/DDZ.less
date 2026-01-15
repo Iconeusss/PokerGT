@@ -636,11 +636,69 @@ body,
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 1cqw;
     padding: 1rem;
     background: rgba(255, 255, 255, 0.05); // 微微发亮的区域表示出牌区
     border-radius: 1rem;
     border: 1px dashed rgba(255, 255, 255, 0.1);
+    
+    // 启用容器查询，使卡牌随父容器宽度缩放
+    container-type: inline-size;
+    width: 90%;
+    height: 90%;
+    margin-left: -1rem;
+
+    @media (max-width: 768px) {
+      width: 90%;
+      height: 300%;
+      margin-left: 0;
+    }
+
+    // 动态比例
+    --card-scale: 1;
+    &.scale-large { --card-scale: 1.35; }
+    &.scale-medium { --card-scale: 1; }
+    &.scale-small { --card-scale: 0.75; }
+
+    .card {
+      // 基于容器宽度的流体尺寸 (假设基准宽度为容器的 12% 左右，一行约 8 张)
+      // 使用 CSS 变量 --card-scale 进行缩放
+      width: calc(12cqw * var(--card-scale));
+      height: calc(16.8cqw * var(--card-scale));
+      border-radius: calc(1.2cqw * var(--card-scale));
+      border-width: calc(0.2cqw * var(--card-scale));
+      margin: calc(0.2cqw * var(--card-scale));
+      padding: calc(0.6cqw * var(--card-scale));
+      box-shadow: 0 calc(0.5cqw * var(--card-scale)) calc(1cqw * var(--card-scale)) rgba(0,0,0,0.2);
+
+      .card-top-left {
+        top: calc(0.5cqw * var(--card-scale));
+        left: calc(0.5cqw * var(--card-scale));
+        width: calc(3.6cqw * var(--card-scale));
+        
+        .card-rank { font-size: calc(4.8cqw * var(--card-scale)); }
+        .card-suit { font-size: calc(4.3cqw * var(--card-scale)); }
+      }
+
+      .card-bottom-right {
+        bottom: calc(0.5cqw * var(--card-scale));
+        right: calc(0.5cqw * var(--card-scale));
+        
+        .card-rank { font-size: calc(4.8cqw * var(--card-scale)); }
+        .card-suit { font-size: calc(4.3cqw * var(--card-scale)); }
+      }
+
+      // Joker 特殊处理
+      &.joker-card {
+        .joker-text {
+          font-size: calc(1.7cqw * var(--card-scale));
+          line-height: calc(1.7cqw * var(--card-scale));
+        }
+        .joker-main-symbol {
+          font-size: calc(8.4cqw * var(--card-scale));
+        }
+      }
+    }
   }
 
   .table-empty {
@@ -804,6 +862,11 @@ body,
 
         &.selected {
           transform: translateY(-0.8rem);
+
+          // 强制覆盖 hover 状态下的位移，保持与选中状态一致
+          &:hover {
+            transform: translateY(-0.8rem);
+          }
         }
       }
     }
