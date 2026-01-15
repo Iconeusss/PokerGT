@@ -3,7 +3,7 @@ import "./DDZ.less"
 
 // --- 基础接口与常量 ---
 interface Card { suit: string; rank: string; id: string; value: number; }
-interface Player { id: number; name: string; cards: Card[]; isLandlord: boolean; }
+interface Player { id: number; name: string; cards: Card[]; isLandlord: boolean; playCount: number; }
 interface CardType { type: string; value: number; count: number; }
 
 const suits = ['♠', '♥', '♣', '♦'];
@@ -126,9 +126,9 @@ const findSmartAICards = (hand: Card[], lastCards: Card[], opponentCount: number
 const DouDiZhuGame: React.FC = () => {
   // --- 原有状态保持不变 ---
   const [players, setPlayers] = useState<Player[]>([
-    { id: 0, name: '玩家1 (你)', cards: [], isLandlord: false },
-    { id: 1, name: '玩家2', cards: [], isLandlord: false },
-    { id: 2, name: '玩家3', cards: [], isLandlord: false }
+    { id: 0, name: '玩家1 (你)', cards: [], isLandlord: false, playCount: 0 },
+    { id: 1, name: '玩家2', cards: [], isLandlord: false, playCount: 0 },
+    { id: 2, name: '玩家3', cards: [], isLandlord: false, playCount: 0 }
   ]);
   const [baseCards, setBaseCards] = useState<Card[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState(0);
@@ -141,14 +141,15 @@ const DouDiZhuGame: React.FC = () => {
   const [landlordId, setLandlordId] = useState(-1);
   const [passCount, setPassCount] = useState(0);
   const [showRules, setShowRules] = useState(false);
+  const [totalTurns, setTotalTurns] = useState(0);
 
   // --- 游戏流程 ---
   const startGame = () => {
     const deck = shuffleDeck(createDeck());
     const newPlayers: Player[] = [
-      { id: 0, name: '玩家1 (你)', cards: deck.slice(0, 17).sort((a, b) => a.value - b.value), isLandlord: false },
-      { id: 1, name: '玩家2', cards: deck.slice(17, 34).sort((a, b) => a.value - b.value), isLandlord: false },
-      { id: 2, name: '玩家3', cards: deck.slice(34, 51).sort((a, b) => a.value - b.value), isLandlord: false }
+      { id: 0, name: '玩家1 (你)', cards: deck.slice(0, 17).sort((a, b) => a.value - b.value), isLandlord: false, playCount: 0 },
+      { id: 1, name: '玩家2', cards: deck.slice(17, 34).sort((a, b) => a.value - b.value), isLandlord: false, playCount: 0 },
+      { id: 2, name: '玩家3', cards: deck.slice(34, 51).sort((a, b) => a.value - b.value), isLandlord: false, playCount: 0 }
     ];
     setPlayers(newPlayers);
     setBaseCards(deck.slice(51, 54));
@@ -160,6 +161,7 @@ const DouDiZhuGame: React.FC = () => {
     setBiddingRound(0);
     setLandlordId(-1);
     setPassCount(0);
+    setTotalTurns(0);
     setMessage('叫地主阶段！玩家1先选择是否叫地主');
   };
 
@@ -186,12 +188,14 @@ const DouDiZhuGame: React.FC = () => {
     // const type = getCardType(cardsToPlay);
     const newPlayers = [...players];
     newPlayers[playerId].cards = newPlayers[playerId].cards.filter(card => !cardsToPlay.find(c => c.id === card.id));
+    newPlayers[playerId].playCount = (newPlayers[playerId].playCount || 0) + 1;
     
     setPlayers(newPlayers);
     setLastPlayedCards(cardsToPlay);
     setLastPlayerId(playerId);
     setPassCount(0);
     setSelectedCards([]);
+    setTotalTurns(prev => prev + 1);
     
     if (newPlayers[playerId].cards.length === 0) {
       setMessage(`🎉 ${newPlayers[playerId].isLandlord ? '地主' : '农民'}获胜！`);
@@ -207,6 +211,7 @@ const DouDiZhuGame: React.FC = () => {
   const handlePass = (playerId: number) => {
     const newPassCount = passCount + 1;
     setPassCount(newPassCount);
+    setTotalTurns(prev => prev + 1);
     const nextPlayer = (playerId + 1) % 3;
     setCurrentPlayer(nextPlayer);
     if (newPassCount >= 2) {
@@ -277,9 +282,17 @@ const DouDiZhuGame: React.FC = () => {
 
   return (
     <div className="game-container">
-      <button className="btn-rules" onClick={() => setShowRules(true)}>
-        <span className="icon">📜</span> 规则
-      </button>
+      {(gamePhase === 'init' || gamePhase === 'bidding') && (
+        <button className="btn-rules" onClick={() => setShowRules(true)}>
+          <span className="icon">📜</span> 规则
+        </button>
+      )}
+
+      {(gamePhase === 'playing' || gamePhase === 'end') && (
+        <button className="btn-rules-icon" onClick={() => setShowRules(true)} title="游戏规则">
+          📜
+        </button>
+      )}
 
       {showRules && (
         <div className="modal-overlay" onClick={() => setShowRules(false)}>
@@ -300,7 +313,7 @@ const DouDiZhuGame: React.FC = () => {
       )}
 
       <div className="game-wrapper">
-        {gamePhase === 'init' && <h1 className="game-title">斗地主</h1>}
+        {(gamePhase === 'init' || gamePhase === 'bidding') && <h1 className="game-title">斗地主</h1>}
         <div className="message-box"><p className="message-text">{message}</p></div>
         <div className="button-group">
           <button onClick={startGame} className="btn btn-primary">{gamePhase === 'init' ? '开始游戏' : '重新开始'}</button>
@@ -320,15 +333,16 @@ const DouDiZhuGame: React.FC = () => {
         <div className="game-area">
           <div className="side-player left">
             {players[1] && (
-              <div className={`player-info ${currentPlayer === 1 && gamePhase === 'playing' ? 'active' : ''} ${players[1].isLandlord ? 'landlord' : ''}`}>
+              <div className={`player-info ${currentPlayer === 1 && (gamePhase === 'playing' || gamePhase === 'bidding') ? 'active' : ''} ${players[1].isLandlord ? 'landlord' : ''}`}>
                 <h3 className="player-name">{players[1].name}</h3>
                 <p className="player-cards-count">剩余: {players[1].cards.length} 张</p>
+                <p className="player-stats">出牌: {players[1].playCount || 0}</p>
               </div>
             )}
           </div>
           <div className="center-area">
             <div className="table-area">
-              <h3 className="table-title">当前牌面</h3>
+              <h3 className="table-title">当前牌面 <span className="game-stats-inline">轮次: {totalTurns}</span></h3>
               {lastPlayedCards.length > 0 ? (
                 <div>
                   <p className="table-info">{players[lastPlayerId]?.name} 出的牌</p>
@@ -339,19 +353,20 @@ const DouDiZhuGame: React.FC = () => {
           </div>
           <div className="side-player right">
             {players[2] && (
-              <div className={`player-info ${currentPlayer === 2 && gamePhase === 'playing' ? 'active' : ''} ${players[2].isLandlord ? 'landlord' : ''}`}>
+              <div className={`player-info ${currentPlayer === 2 && (gamePhase === 'playing' || gamePhase === 'bidding') ? 'active' : ''} ${players[2].isLandlord ? 'landlord' : ''}`}>
                 <h3 className="player-name">{players[2].name}</h3>
                 <p className="player-cards-count">剩余: {players[2].cards.length} 张</p>
+                <p className="player-stats">出牌: {players[2].playCount || 0}</p>
               </div>
             )}
           </div>
         </div>
 
         {(gamePhase === 'playing' || gamePhase === 'bidding') && (
-          <div className={`player-hand ${players[0].isLandlord ? 'landlord' : ''}`}>
+          <div className={`player-hand ${players[0].isLandlord ? 'landlord' : ''} ${currentPlayer === 0 ? 'active' : ''}`}>
             <div className="hand-header">
               <h3 className="hand-title">
-                你的手牌 ({players[0].cards.length}张) 
+                你的手牌 ({players[0].cards.length}张) <span className="player-stats-inline">出牌: {players[0].playCount || 0}</span>
                 {currentPlayer === 0 && <span className="your-turn">← {gamePhase === 'bidding' ? '请叫地主' : '你的回合'}</span>}
               </h3>
 

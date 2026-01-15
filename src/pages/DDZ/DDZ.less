@@ -115,6 +115,32 @@ body,
   }
 }
 
+// 规则小按钮 (游戏中)
+.btn-rules-icon {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.5);
+    transform: scale(1.1);
+  }
+}
+
 // 模态框
 .modal-overlay {
   position: fixed;
@@ -277,7 +303,7 @@ body,
   }
 
   &.btn-pass-card {
-    background: linear-gradient(to bottom, #f97316, #ea580c);
+    background: linear-gradient(to bottom, #ea580c, #fe4406);
     color: white;
     border-bottom: 3px solid #c2410c;
 
@@ -444,14 +470,9 @@ body,
   backdrop-filter: blur(4px);
   position: relative;
 
-  &.active {
-    border-color: #fbbf24;
-    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
-    background: rgba(0, 0, 0, 0.7);
-  }
-
   &.landlord {
-    border-color: #f59e0b;
+    border-color: #ef4444 !important; // 红色边框
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); // 红色光晕
 
     &::after {
       content: "👑";
@@ -461,6 +482,12 @@ body,
       font-size: 2rem;
       filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
     }
+  }
+
+  &.active {
+    border-color: #fbbf24;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+    background: rgba(0, 0, 0, 0.7);
   }
 
   .player-name {
@@ -480,6 +507,15 @@ body,
     padding: 0.2rem 0.5rem;
     border-radius: 1rem;
     display: inline-block;
+  }
+
+  .player-stats {
+    display: block;
+    color: #e5e7eb;
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+    opacity: 0.9;
+    font-weight: normal;
   }
 
   @media (max-width: 768px) {
@@ -527,6 +563,19 @@ body,
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 1px;
+
+    .game-stats-inline {
+      margin-left: 0.8rem;
+      font-size: 0.85em;
+      color: #fbbf24;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.2rem 0.6rem;
+      border-radius: 0.5rem;
+      text-transform: none;
+      letter-spacing: normal;
+      display: inline-block;
+      vertical-align: middle;
+    }
   }
 
   .table-info {
@@ -562,23 +611,35 @@ body,
 
 // 玩家手牌区域
 .player-hand {
-  // 优化底部渐变背景，使其更自然融入绿色桌面
-  background: linear-gradient(
-    to top,
-    rgba(20, 50, 30, 0.95) 0%,
-    rgba(20, 50, 30, 0) 100%
-  );
-  border-radius: @border-radius-large @border-radius-large 0 0;
+  // 移除手牌区域渐变背景，改为统一的半透明背景
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  border-radius: 1rem;
   padding: 1.5rem 1rem 0.5rem 1rem;
   box-shadow: none;
   position: sticky;
   bottom: 0;
   width: 100%;
   margin-top: auto; // 推到底部
+  border: 2px solid rgba(255, 255, 255, 0.1); // 基础边框
 
   &.landlord {
-    // 地主不再有背景色，可能有边框或其他标识
-    border-top: 2px solid @color-primary;
+    border-color: #ef4444; // 红色边框
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); // 红色光晕
+
+    &::after {
+      content: "👑";
+      position: absolute;
+      top: -15px;
+      right: -10px;
+      font-size: 2rem;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    }
+  }
+
+  &.active {
+    border-color: #fbbf24;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
   }
 
   .hand-header {
@@ -602,6 +663,17 @@ body,
         color: #4ade80;
         margin-left: 0.5rem;
         animation: pulse 1.5s infinite;
+      }
+
+      .player-stats-inline {
+        margin-left: 0.8rem;
+        font-size: 0.8em;
+        color: #9ca3af;
+        font-weight: normal;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.1rem 0.5rem;
+        border-radius: 0.5rem;
+        vertical-align: middle;
       }
     }
 
@@ -637,7 +709,7 @@ body,
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
-    padding-top: 1rem;
+    padding-top: 2rem; // 增加顶部内边距，防止选中卡牌上浮被遮挡
     min-height: 9rem;
     padding-bottom: 1rem;
     width: max-content;
@@ -659,7 +731,7 @@ body,
         &:hover {
           transform: translateY(-1rem);
           box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
-          z-index: 100; // 悬停时层级最高
+          // z-index: 100; 
         }
       }
 
