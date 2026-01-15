@@ -67,7 +67,7 @@ body,
 }
 
 .game-wrapper {
-  max-width: 1200px;
+  max-width: 100vw;
   margin: 0 auto;
   width: 100%;
   flex: 1;
@@ -183,6 +183,41 @@ body,
     p { margin-bottom: 0.5rem; }
     ul { padding-left: 1.5rem; margin-bottom: 0.5rem; }
     li { margin-bottom: 0.25rem; }
+
+    .rule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      
+      .rule-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .rule-label {
+          font-weight: bold;
+          min-width: 5rem;
+          color: #e5e7eb;
+          text-align: right;
+        }
+
+        .rule-cards {
+          display: flex;
+          gap: 0.25rem;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+      }
+    }
   }
   
   .close-btn {
@@ -229,6 +264,14 @@ body,
   justify-content: center;
   gap: 1rem;
   margin-bottom: 1rem;
+
+  &.top-right {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    margin: 0;
+    z-index: 100;
+  }
 }
 
 // 按钮样式
@@ -655,15 +698,11 @@ body,
       font-weight: bold;
       color: #fff;
       margin: 0;
-      text-align: center;
+      display: flex;
+      align-items: center;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
       white-space: nowrap;
-
-      .your-turn {
-        color: #4ade80;
-        margin-left: 0.5rem;
-        animation: pulse 1.5s infinite;
-      }
+      height: 3rem;
 
       .player-stats-inline {
         margin-left: 0.8rem;
@@ -805,6 +844,8 @@ body,
   box-shadow: @shadow-card;
   font-weight: bold;
   cursor: default;
+  user-select: none; // 禁止文本选中
+  -webkit-user-select: none; // Safari/Chrome兼容
 
   // 内部元素样式
   .card-top-left {
@@ -868,6 +909,43 @@ body,
 
       @media (max-width: 500px) {
         font-size: 0.8rem;
+      }
+    }
+  }
+
+  // Mini card style for rules
+  &.mini {
+    width: 2.5rem;
+    height: 3.5rem;
+    border-radius: 0.25rem;
+    padding: 0.1rem;
+    margin: 0.1rem;
+    border-width: 1px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+
+    .card-top-left {
+      width: 0.8rem;
+      top: 0.1rem;
+      left: 0.1rem;
+      .card-rank { font-size: 0.8rem !important; }
+      .card-suit { font-size: 0.6rem !important; }
+    }
+
+    .card-bottom-right {
+      bottom: 0.1rem;
+      right: 0.1rem;
+      .card-rank { font-size: 0.8rem !important; }
+      .card-suit { font-size: 0.6rem !important; }
+    }
+    
+    &.joker-card {
+      .joker-text {
+        font-size: 0.35rem !important;
+        line-height: 0.35rem;
+        transform: none;
+      }
+      .joker-main-symbol {
+        font-size: 1.2rem;
       }
     }
   }
