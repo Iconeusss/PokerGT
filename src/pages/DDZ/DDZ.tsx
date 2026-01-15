@@ -140,6 +140,7 @@ const DouDiZhuGame: React.FC = () => {
   const [message, setMessage] = useState('点击"开始游戏"发牌');
   const [landlordId, setLandlordId] = useState(-1);
   const [passCount, setPassCount] = useState(0);
+  const [showRules, setShowRules] = useState(false);
 
   // --- 游戏流程 ---
   const startGame = () => {
@@ -276,23 +277,34 @@ const DouDiZhuGame: React.FC = () => {
 
   return (
     <div className="game-container">
-      <div className="game-wrapper">
-        <h1 className="game-title">斗地主</h1>
-        <div className="info-box">
-          <p className="info-title">游戏规则：</p>
-          <p className="info-text">单张、对子、三张、三带一/二、顺子、炸弹💣、王炸🚀</p>
+      <button className="btn-rules" onClick={() => setShowRules(true)}>
+        <span className="icon">📜</span> 规则
+      </button>
+
+      {showRules && (
+        <div className="modal-overlay" onClick={() => setShowRules(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2 className="modal-title">游戏规则</h2>
+            <div className="modal-body">
+              <p><strong>基本牌型：</strong>单张、对子、三张、三带一/二、顺子、连对。</p>
+              <p><strong>特殊牌型：</strong></p>
+              <ul>
+                <li>炸弹💣：四张点数相同的牌</li>
+                <li>王炸🚀：大小王组合 (最大牌型)</li>
+              </ul>
+              <p><strong>胜负判定：</strong>地主跑光手牌获胜，否则农民获胜。</p>
+            </div>
+            <button className="btn btn-primary close-btn" onClick={() => setShowRules(false)}>关闭</button>
+          </div>
         </div>
+      )}
+
+      <div className="game-wrapper">
+        {gamePhase === 'init' && <h1 className="game-title">斗地主</h1>}
         <div className="message-box"><p className="message-text">{message}</p></div>
         <div className="button-group">
           <button onClick={startGame} className="btn btn-primary">{gamePhase === 'init' ? '开始游戏' : '重新开始'}</button>
         </div>
-
-        {gamePhase === 'bidding' && currentPlayer === 0 && (
-          <div className="button-group">
-            <button onClick={() => callLandlord(true)} className="btn btn-landlord">叫地主 👑</button>
-            <button onClick={() => callLandlord(false)} className="btn btn-pass">不叫</button>
-          </div>
-        )}
 
         {gamePhase !== 'init' && (
           <div className="base-cards-section">
@@ -309,7 +321,7 @@ const DouDiZhuGame: React.FC = () => {
           <div className="side-player left">
             {players[1] && (
               <div className={`player-info ${currentPlayer === 1 && gamePhase === 'playing' ? 'active' : ''} ${players[1].isLandlord ? 'landlord' : ''}`}>
-                <h3 className="player-name">{players[1].name} {players[1].isLandlord && '👑'}</h3>
+                <h3 className="player-name">{players[1].name}</h3>
                 <p className="player-cards-count">剩余: {players[1].cards.length} 张</p>
               </div>
             )}
@@ -328,25 +340,39 @@ const DouDiZhuGame: React.FC = () => {
           <div className="side-player right">
             {players[2] && (
               <div className={`player-info ${currentPlayer === 2 && gamePhase === 'playing' ? 'active' : ''} ${players[2].isLandlord ? 'landlord' : ''}`}>
-                <h3 className="player-name">{players[2].name} {players[2].isLandlord && '👑'}</h3>
+                <h3 className="player-name">{players[2].name}</h3>
                 <p className="player-cards-count">剩余: {players[2].cards.length} 张</p>
               </div>
             )}
           </div>
         </div>
 
-        {gamePhase === 'playing' && (
+        {(gamePhase === 'playing' || gamePhase === 'bidding') && (
           <div className={`player-hand ${players[0].isLandlord ? 'landlord' : ''}`}>
-            <h3 className="hand-title">你的手牌 ({players[0].cards.length}张) {currentPlayer === 0 && <span className="your-turn">← 你的回合</span>}</h3>
-            {currentPlayer === 0 && (
-              <div className="button-group">
-                <button onClick={playCards} disabled={selectedCards.length === 0} className="btn btn-play">出牌 ({selectedCards.length})</button>
-                <button onClick={() => handlePass(0)} disabled={lastPlayedCards.length === 0} className="btn btn-pass-card">过牌</button>
-              </div>
-            )}
+            <div className="hand-header">
+              <h3 className="hand-title">
+                你的手牌 ({players[0].cards.length}张) 
+                {currentPlayer === 0 && <span className="your-turn">← {gamePhase === 'bidding' ? '请叫地主' : '你的回合'}</span>}
+              </h3>
+
+              {currentPlayer === 0 && gamePhase === 'bidding' && (
+                <div className="button-group">
+                  <button onClick={() => callLandlord(true)} className="btn btn-landlord">叫地主 👑</button>
+                  <button onClick={() => callLandlord(false)} className="btn btn-pass">不叫</button>
+                </div>
+              )}
+
+              {currentPlayer === 0 && gamePhase === 'playing' && (
+                <div className="button-group">
+                  <button onClick={playCards} disabled={selectedCards.length === 0} className="btn btn-play">出牌 ({selectedCards.length})</button>
+                  <button onClick={() => handlePass(0)} disabled={lastPlayedCards.length === 0} className="btn btn-pass-card">过牌</button>
+                </div>
+              )}
+            </div>
+
             <div className="hand-cards-scroll-container">
               <div className="hand-cards">
-                {players[0].cards.map(c => renderCard(c, currentPlayer === 0, selectedCards.includes(c.id), 'normal'))}
+                {players[0].cards.map(c => renderCard(c, true, selectedCards.includes(c.id), 'normal'))}
               </div>
             </div>
           </div>

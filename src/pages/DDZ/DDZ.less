@@ -1,30 +1,32 @@
 // 颜色变量
-@color-primary: #dc2626;
-@color-secondary: #f59e0b;
-@color-success: #16a34a;
-@color-background: #991b1b;
-@color-background-light: #b45309;
+@color-primary: #f59e0b; // 金色/橙色作为主色调，更像游戏UI
+@color-secondary: #dc2626; // 红色用于强调
+@color-success: #22c55e;
+@color-background: #1a4d2e; // 深绿色桌布
+@color-background-light: #2d6a45; // 浅一点的绿色用于渐变
 @color-card-bg: #ffffff;
 @color-card-red: #dc2626;
 @color-card-black: #1f2937;
 @color-joker: #9333ea;
 @color-border: #d1d5db;
-@color-border-active: #3b82f6;
+@color-border-active: #fbbf24; // 选中时金色边框
 @color-text-dark: #1f2937;
 @color-text-light: #f3f4f6;
-@color-text-muted: #6b7280;
+@color-text-muted: #9ca3af;
+@color-panel-bg: rgba(0, 0, 0, 0.4); // 半透明面板背景
 
 // 尺寸变量
 @card-width: 5rem;
 @card-height: 7rem;
-@card-width-small: 2.5rem;
-@card-height-small: 3.5rem;
+@card-width-small: 3rem;
+@card-height-small: 4.2rem;
 @border-radius: 0.5rem;
 @border-radius-large: 1rem;
 
 // 阴影变量
-@shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-@shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+@shadow-card: 0 2px 4px rgba(0, 0, 0, 0.2);
+@shadow-large: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+@shadow-text: 0 2px 4px rgba(0, 0, 0, 0.5);
 
 // 动画时间
 @transition-fast: 0.2s;
@@ -46,68 +48,152 @@ body,
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden; // 防止左右晃动
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 // 游戏容器
 .game-container {
   min-height: 100vh;
   width: 100%;
-  //   max-width: 100vw;
-  background: linear-gradient(
-    to bottom right,
-    @color-background,
-    @color-background-light
+  background: radial-gradient(
+    circle at center,
+    @color-background-light 0%,
+    @color-background 100%
   );
   padding: 1rem;
+  color: @color-text-light;
+  display: flex;
+  flex-direction: column;
 }
 
 .game-wrapper {
-  max-width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 // 标题
 .game-title {
-  font-size: 2.5rem;
+  font-size: 3rem;
+  font-weight: 800;
+  color: #fbbf24; // 金色标题
+  text-align: center;
+  margin-bottom: 0.5rem;
+  text-shadow: @shadow-text;
+  letter-spacing: 2px;
+}
+
+// 规则按钮
+.btn-rules {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: bold;
-  color: @color-text-light;
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-// 信息框
-.info-box {
-  background: #fef3c7;
-  border-radius: @border-radius;
-  padding: 0.5rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.875rem;
-
-  .info-title {
-    font-weight: bold;
-    color: @color-text-dark;
-    margin-bottom: 0.25rem;
+  backdrop-filter: blur(4px);
+  transition: all 0.3s;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.05);
   }
 
-  .info-text {
-    color: #78716c;
+  .icon {
+    font-size: 1.2rem;
   }
 }
 
-// 消息框
+// 模态框
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  color: #f3f4f6;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  animation: modal-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .modal-title {
+    margin-top: 0;
+    color: #fbbf24;
+    text-align: center;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .modal-body {
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    
+    p { margin-bottom: 0.5rem; }
+    ul { padding-left: 1.5rem; margin-bottom: 0.5rem; }
+    li { margin-bottom: 0.25rem; }
+  }
+  
+  .close-btn {
+    width: 100%;
+    margin-top: 1rem;
+  }
+}
+
+@keyframes modal-pop {
+  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+// 消息框 (Toast 风格)
 .message-box {
-  background: @color-card-bg;
-  border-radius: @border-radius;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  position: fixed;
+  top: 23%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 2rem;
+  padding: 0.75rem 2rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  pointer-events: none; // 允许点击穿透
   text-align: center;
-  box-shadow: @shadow-large;
+  transition: all 0.3s ease;
+  min-width: 200px;
 
   .message-text {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    color: @color-text-dark;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    margin: 0;
   }
 }
 
@@ -115,71 +201,88 @@ body,
 .button-group {
   display: flex;
   justify-content: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 // 按钮样式
 .btn {
-  padding: 0.5rem 1.5rem;
-  border-radius: @border-radius;
-  font-weight: 600;
+  padding: 0.6rem 2rem;
+  border-radius: 2rem; // 圆角按钮
+  font-weight: 700;
   border: none;
   cursor: pointer;
   transition: all @transition-fast;
-  box-shadow: @shadow-large;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  top: 0;
+
+  &:active {
+    top: 2px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
 
   &:disabled {
-    background: #9ca3af !important;
+    background: #4b5563 !important;
+    color: #9ca3af !important;
     cursor: not-allowed;
+    box-shadow: none;
+    top: 0;
   }
 
   &.btn-primary {
-    background: #2563eb;
+    background: linear-gradient(to bottom, #3b82f6, #2563eb);
     color: white;
+    border-bottom: 3px solid #1d4ed8;
 
     &:hover:not(:disabled) {
-      background: #1d4ed8;
+      filter: brightness(1.1);
     }
   }
 
   &.btn-landlord {
-    background: @color-primary;
+    background: linear-gradient(to bottom, #f59e0b, #d97706);
     color: white;
     font-size: 1.25rem;
-    padding: 0.75rem 2rem;
+    padding: 0.75rem 2.5rem;
+    border-bottom: 3px solid #b45309;
 
     &:hover:not(:disabled) {
-      background: #b91c1c;
+      filter: brightness(1.1);
     }
   }
 
   &.btn-pass {
-    background: #4b5563;
+    background: linear-gradient(to bottom, #6b7280, #4b5563);
     color: white;
     font-size: 1.25rem;
-    padding: 0.75rem 2rem;
+    padding: 0.75rem 2.5rem;
+    border-bottom: 3px solid #374151;
 
     &:hover:not(:disabled) {
-      background: #374151;
+      filter: brightness(1.1);
     }
   }
 
   &.btn-play {
-    background: @color-success;
+    background: linear-gradient(to bottom, #22c55e, #16a34a);
     color: white;
+    border-bottom: 3px solid #15803d;
 
     &:hover:not(:disabled) {
-      background: #15803d;
+      filter: brightness(1.1);
     }
   }
 
   &.btn-pass-card {
-    background: #ea580c;
+    background: linear-gradient(to bottom, #f97316, #ea580c);
     color: white;
+    border-bottom: 3px solid #c2410c;
 
     &:hover:not(:disabled) {
-      background: #c2410c;
+      filter: brightness(1.1);
     }
   }
 }
@@ -192,30 +295,56 @@ body,
 }
 
 .base-cards-panel {
-  background: @color-card-bg;
-  border-radius: @border-radius;
-  padding: 0.75rem;
-  box-shadow: @shadow-large;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: @border-radius-large;
+  padding: 0.75rem 1.5rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 
   .panel-title {
     font-weight: bold;
-    color: @color-text-dark;
+    color: #fbbf24;
     margin-bottom: 0.5rem;
     text-align: center;
+    font-size: 1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
   .base-cards-container {
     display: flex;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
 
   .card-placeholder {
-    width: @card-width;
-    height: @card-height;
+    width: @card-width-small;
+    height: @card-height-small;
     border-radius: @border-radius;
-    border: 2px solid #9ca3af;
-    background: #e5e7eb;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  // 底牌使用小尺寸
+  .card {
+    width: @card-width-small;
+    height: @card-height-small;
+
+    .card-top-left,
+    .card-bottom-right {
+      .card-rank {
+        font-size: 1.2rem;
+      }
+      .card-suit {
+        font-size: 0.8rem;
+      }
+    }
+    .joker-main-symbol {
+      font-size: 0.8rem !important;
+    }
+    .joker-text {
+      font-size: 0.5rem !important;
+      line-height: 0.5rem !important;
+    }
   }
 }
 
@@ -223,36 +352,60 @@ body,
 .game-area {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center; // 垂直居中对齐
+  justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   width: 100%;
+  flex: 1;
 
   @media (max-width: 768px) {
-    flex-direction: column;
+    flex-direction: row; // 移动端改为行布局，允许换行
+    flex-wrap: nowrap; // 不换行
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
   }
 }
 
 // 侧边玩家
 .side-player {
-  flex: 0 0 100px;
+  flex: 0 0 140px;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 
   &.left {
+    order: 1;
     @media (max-width: 768px) {
       order: 1;
+      flex: 0 0 auto; // 移动端自适应宽度
+      width: 25%; // 限制宽度
+      max-width: 90px;
+      padding: 0;
+      flex-direction: column; // 保持垂直排列，更紧凑
+      margin-bottom: 0;
     }
   }
 
   &.right {
+    order: 3;
     @media (max-width: 768px) {
-      order: 2;
+      order: 3; // 在右侧
+      flex: 0 0 auto;
+      width: 25%;
+      max-width: 90px;
+      padding: 0;
+      flex-direction: column;
+      margin-bottom: 0;
     }
   }
 
   @media (max-width: 768px) {
-    flex: 1;
-    width: 100%;
+    width: auto;
+    margin-bottom: 0;
   }
 }
 
@@ -261,67 +414,130 @@ body,
   flex: 1;
   min-width: 0;
   z-index: 1;
-  //   margin: 0 1rem;
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 
   @media (max-width: 768px) {
-    order: 3;
-    width: 100%;
+    order: 2; // 在中间
+    flex: 1; // 占据剩余空间
+    width: auto;
+    justify-content: center;
+    padding-top: 0;
+    margin: 0 0.25rem;
   }
 }
 
-// 玩家信息卡片
+// 玩家信息卡片 (头像样式)
 .player-info {
-  background: @color-card-bg;
-  border-radius: @border-radius;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 1rem;
   padding: 1rem;
-  box-shadow: @shadow-large;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   transition: all @transition-fast;
+  width: 100%;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  position: relative;
 
   &.active {
-    border: 4px solid @color-secondary;
+    border-color: #fbbf24;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+    background: rgba(0, 0, 0, 0.7);
   }
 
   &.landlord {
-    background: #fef2f2;
-    border: 2px solid @color-primary;
+    border-color: #f59e0b;
+
+    &::after {
+      content: "👑";
+      position: absolute;
+      top: -15px;
+      right: -10px;
+      font-size: 2rem;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    }
   }
 
   .player-name {
     font-weight: bold;
-    color: @color-text-dark;
+    color: #fff;
     margin: 0 0 0.5rem 0;
-    font-size: 1.125rem;
+    font-size: 1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .player-cards-count {
-    color: @color-text-muted;
-    font-size: 0.875rem;
+    color: #fbbf24;
+    font-size: 0.9rem;
     margin: 0;
+    font-weight: bold;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.2rem 0.5rem;
+    border-radius: 1rem;
+    display: inline-block;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: 0;
+    padding: 0.5rem 0.2rem;
+    
+    .player-name {
+      font-size: 0.8rem;
+      margin-bottom: 0.2rem;
+    }
+    
+    .player-cards-count {
+      font-size: 0.75rem;
+      padding: 0.1rem 0.3rem;
+    }
+
+    &.landlord::after {
+      font-size: 1.2rem;
+      top: -10px;
+      right: -5px;
+    }
   }
 }
 
-// 牌桌区域
+// 牌桌区域 (出牌展示)
 .table-area {
-  background: linear-gradient(to bottom right, #15803d, #166534);
+  // 移除背景，让牌看起来在桌面上
+  background: transparent;
   border-radius: @border-radius-large;
-  padding: 2rem 1.5rem;
-  box-shadow: @shadow-large;
-  min-height: 16rem;
-  //   width: 100%;
+  padding: 1rem;
+  box-shadow: none;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 
   .table-title {
-    color: @color-text-light;
-    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .table-info {
-    color: #86efac;
+    color: #fbbf24;
     text-align: center;
     margin-bottom: 1rem;
-    font-size: 1rem;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0.3rem 1rem;
+    border-radius: 1rem;
   }
 
   .table-cards {
@@ -329,39 +545,90 @@ body,
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.25rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05); // 微微发亮的区域表示出牌区
+    border-radius: 1rem;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
   }
 
   .table-empty {
-    color: #86efac;
+    color: rgba(255, 255, 255, 0.3);
     text-align: center;
-    padding: 3rem 0;
+    padding: 2rem 0;
     font-size: 1.125rem;
+    font-style: italic;
   }
 }
 
 // 玩家手牌区域
 .player-hand {
-  background: @color-card-bg;
-  border-radius: @border-radius-large;
-  padding: 1.5rem;
-  box-shadow: @shadow-large;
-  //   width: 100%;
+  // 优化底部渐变背景，使其更自然融入绿色桌面
+  background: linear-gradient(
+    to top,
+    rgba(20, 50, 30, 0.95) 0%,
+    rgba(20, 50, 30, 0) 100%
+  );
+  border-radius: @border-radius-large @border-radius-large 0 0;
+  padding: 1.5rem 1rem 0.5rem 1rem;
+  box-shadow: none;
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  margin-top: auto; // 推到底部
 
   &.landlord {
-    background: #fef2f2;
-    border: 4px solid @color-primary;
+    // 地主不再有背景色，可能有边框或其他标识
+    border-top: 2px solid @color-primary;
   }
 
-  .hand-title {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: @color-text-dark;
-    margin-bottom: 1rem;
-    text-align: center;
+  .hand-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
 
-    .your-turn {
-      color: @color-success;
-      margin-left: 0.5rem;
+    .hand-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #fff;
+      margin: 0;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      white-space: nowrap;
+
+      .your-turn {
+        color: #4ade80;
+        margin-left: 0.5rem;
+        animation: pulse 1.5s infinite;
+      }
+    }
+
+    .button-group {
+      margin-bottom: 0;
+    }
+  }
+
+  .hand-cards-scroll-container {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+
+    &::-webkit-scrollbar {
+      height: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+      &:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
     }
   }
 
@@ -371,13 +638,17 @@ body,
     justify-content: center;
     align-items: center;
     padding-top: 1rem;
-    min-height: 8rem;
+    min-height: 9rem;
+    padding-bottom: 1rem;
+    width: max-content;
+    min-width: 100%;
 
     .card {
       margin: 0;
       margin-left: -2.5rem; // 调整负边距，确保内容可见
-      box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2); // 侧边阴影增加立体感
-      transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+      box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 加深阴影
+      transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
+        margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
 
       &:first-child {
         margin-left: 0;
@@ -387,25 +658,22 @@ body,
       @media (hover: hover) {
         &:hover {
           transform: translateY(-1rem);
-          z-index: 100;
-          box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-          margin-right: 1.5rem;
+          box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+          z-index: 100; // 悬停时层级最高
         }
       }
 
       // 选中状态
       &.selected {
         transform: translateY(-1.5rem);
-        box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
-        margin-right: 1rem; // 选中时推挤邻牌，方便查看
-        z-index: 100; // 确保选中时在最上层
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 金色光晕
+        border-color: #fbbf24;
       }
 
       // 选中且悬停 (仅在支持悬停的设备上启用)
       @media (hover: hover) {
         &.selected:hover {
           transform: translateY(-1.5rem);
-          margin-right: 1.5rem; // 保持悬停时的较大间距
         }
       }
 
@@ -417,19 +685,29 @@ body,
       // 超小屏幕适配
       @media (max-width: 500px) {
         margin-left: -1.8rem; // 保持重叠度
-        
+
         // 移动端禁用 hover 效果
         &:hover {
-          margin-right: 0;
           transform: none;
         }
-        
+
         &.selected {
           transform: translateY(-0.8rem);
-          margin-right: 0.5rem; // 移动端选中时稍微推挤，避免过度占用空间
         }
       }
     }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
@@ -440,7 +718,7 @@ body,
   width: @card-width;
   height: @card-height;
   border-radius: @border-radius;
-  border: 2px solid @color-border;
+  border: 1px solid #d1d5db; // 更细的边框
   margin: 0.125rem;
   transition: all @transition-fast;
   flex-shrink: 0; // 防止卡牌在空间不足时变形
@@ -473,7 +751,8 @@ body,
     .card-rank {
       font-size: 2rem;
       line-height: 1;
-      
+      font-family: "Times New Roman", serif; // 更有扑克感
+
       @media (max-width: 500px) {
         font-size: 1.2rem;
       }
@@ -505,6 +784,7 @@ body,
     .card-rank {
       font-size: 2rem;
       line-height: 1;
+      font-family: "Times New Roman", serif;
 
       @media (max-width: 500px) {
         font-size: 1.2rem;
@@ -529,7 +809,7 @@ body,
       display: flex;
       flex-direction: column;
       align-items: center;
-      
+
       @media (max-width: 768px) {
         font-size: 0.7rem !important; // 进一步缩小字体
         line-height: 0.7rem; // 紧凑行高
@@ -562,8 +842,13 @@ body,
     .card-rank {
       font-size: 1rem;
     }
-    .joker-symbol {
-      font-size: 1.125rem;
+    .joker-main-symbol {
+      font-size: 1rem;
+    }
+    .joker-text {
+      font-size: 0.5rem !important;
+      line-height: 0.5rem;
+      transform: scale(1);
     }
   }
 
@@ -578,7 +863,7 @@ body,
   }
 
   &.selected {
-    background: #dbeafe;
+    background: #fff; // 选中也保持白色背景，靠边框和阴影区分
     border-color: @color-primary;
     transform: translateY(-0.75rem);
   }
@@ -652,23 +937,25 @@ body,
   }
 
   .table-area {
-    min-height: 12rem;
-    padding: 1.5rem 1rem;
+    min-height: 10rem;
+    padding: 1rem;
 
     .table-title {
-      font-size: 1.25rem;
+      font-size: 1rem;
     }
   }
 
   .player-hand {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
 
     .hand-title {
-      font-size: 1.25rem;
+      font-size: 1rem;
     }
   }
 
-  .side-player {
-    flex: 0 0 auto;
+  // 调整移动端按钮大小
+  .btn {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
   }
 }
