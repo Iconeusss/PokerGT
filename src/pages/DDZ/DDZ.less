@@ -377,33 +377,57 @@ body,
       margin: 0;
       margin-left: -2.5rem; // 调整负边距，确保内容可见
       box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2); // 侧边阴影增加立体感
-      transition: transform 0.2s, margin 0.2s;
+      transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
 
       &:first-child {
         margin-left: 0;
       }
 
-      // 悬停效果
-      &:hover {
-        transform: translateY(-1rem);
-        z-index: 100;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      // 悬停效果 (仅在支持悬停的设备上启用)
+      @media (hover: hover) {
+        &:hover {
+          transform: translateY(-1rem);
+          z-index: 100;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+          margin-right: 1.5rem;
+        }
       }
 
       // 选中状态
       &.selected {
         transform: translateY(-1.5rem);
         box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+        margin-right: 1rem; // 选中时推挤邻牌，方便查看
+        z-index: 100; // 确保选中时在最上层
       }
 
-      // 选中且悬停
-      &.selected:hover {
-        transform: translateY(-1.5rem);
+      // 选中且悬停 (仅在支持悬停的设备上启用)
+      @media (hover: hover) {
+        &.selected:hover {
+          transform: translateY(-1.5rem);
+          margin-right: 1.5rem; // 保持悬停时的较大间距
+        }
       }
 
       // 响应式：仅调整边距
       @media (max-width: 768px) {
         margin-left: -1.8rem;
+      }
+
+      // 超小屏幕适配
+      @media (max-width: 500px) {
+        margin-left: -1.8rem; // 保持重叠度
+        
+        // 移动端禁用 hover 效果
+        &:hover {
+          margin-right: 0;
+          transform: none;
+        }
+        
+        &.selected {
+          transform: translateY(-0.8rem);
+          margin-right: 0.5rem; // 移动端选中时稍微推挤，避免过度占用空间
+        }
       }
     }
   }
@@ -411,6 +435,7 @@ body,
 
 // 卡牌样式
 .card {
+  position: relative;
   display: inline-block;
   width: @card-width;
   height: @card-height;
@@ -418,7 +443,7 @@ body,
   border: 2px solid @color-border;
   margin: 0.125rem;
   transition: all @transition-fast;
-  position: relative;
+  flex-shrink: 0; // 防止卡牌在空间不足时变形
 
   // 统一风格
   display: flex;
@@ -426,25 +451,40 @@ body,
   align-items: flex-start;
   justify-content: flex-start;
   padding: 0.25rem;
-  background: #fdfdfd;
+  background: @color-card-bg;
   box-shadow: @shadow-card;
   font-weight: bold;
   cursor: default;
 
   // 内部元素样式
   .card-top-left {
+    position: absolute;
+    top: 0.2rem;
+    left: 0.2rem;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     width: 1.5rem;
+
+    @media (max-width: 500px) {
+      width: 1rem;
+    }
 
     .card-rank {
       font-size: 2rem;
       line-height: 1;
+      
+      @media (max-width: 500px) {
+        font-size: 1.2rem;
+      }
     }
     .card-suit {
-      font-size: 1.2rem;
+      font-size: 1.8rem;
       line-height: 1;
+
+      @media (max-width: 500px) {
+        font-size: 0.8rem;
+      }
     }
   }
 
@@ -455,23 +495,61 @@ body,
     transform: rotate(180deg);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
+
+    @media (max-width: 500px) {
+      bottom: 0.1rem;
+      right: 0.1rem;
+    }
 
     .card-rank {
       font-size: 2rem;
       line-height: 1;
+
+      @media (max-width: 500px) {
+        font-size: 1.2rem;
+      }
     }
     .card-suit {
-      font-size: 1.2rem;
+      font-size: 1.8rem;
       line-height: 1;
+
+      @media (max-width: 500px) {
+        font-size: 0.8rem;
+      }
     }
   }
 
-  .joker-symbol {
-    font-size: 2.5rem;
-    align-self: center;
-    margin: auto;
-    margin-top: 1rem;
+  // Joker 专用样式
+  &.joker-card {
+    .joker-text {
+      font-size: 0.7rem;
+      line-height: 0.7rem;
+      color: inherit; // 继承红色或黑色
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      
+      @media (max-width: 768px) {
+        font-size: 0.7rem !important; // 进一步缩小字体
+        line-height: 0.7rem; // 紧凑行高
+        font-weight: normal; // 移除加粗，减少视觉厚重感
+        transform: scale(0.85); // 进一步缩小缩放比例
+      }
+    }
+
+    .joker-main-symbol {
+      font-size: 3.5rem;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      line-height: 1;
+
+      @media (max-width: 768px) {
+        font-size: 1.8rem;
+      }
+    }
   }
 
   &.small {
@@ -515,15 +593,9 @@ body,
       transform: translateY(-0.75rem);
     }
   }
-}
 
-// 响应式设计
-@media (max-width: 768px) {
-  .game-title {
-    font-size: 2rem;
-  }
-
-  .card {
+  // 移动端适配
+  @media (max-width: 768px) {
     width: 3.5rem;
     height: 5rem;
 
@@ -540,6 +612,37 @@ body,
     .joker-symbol {
       font-size: 1.8rem;
     }
+  }
+
+  // 移动端小屏适配
+  @media (max-width: 500px) {
+    width: 3.2rem;
+    height: 4.5rem;
+    border-width: 1px;
+    border-radius: 0.3rem;
+    padding: 0.15rem;
+
+    .card-top-left,
+    .card-bottom-right {
+      .card-rank {
+        font-size: 1.2rem;
+      }
+      .card-suit {
+        font-size: 0.8rem;
+      }
+    }
+
+    .joker-symbol {
+      font-size: 1.5rem;
+      margin-top: 0.5rem;
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .game-title {
+    font-size: 2rem;
   }
 
   .btn-landlord,

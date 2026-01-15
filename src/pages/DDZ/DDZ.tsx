@@ -243,13 +243,21 @@ const DouDiZhuGame: React.FC = () => {
 
   // --- UI 渲染函数 (保持原有 HTML 结构) ---
   const renderCard = (card: Card, isSelectable = false, isSelected = false, size = 'normal') => {
-    const isRed = card.suit === '♥' || card.suit === '♦';
+    const isRed = card.suit === '♥' || card.suit === '♦' || card.rank === 'JOKER';
     const isJoker = card.rank === 'joker' || card.rank === 'JOKER';
     return (
       <div key={card.id} onClick={() => isSelectable && setSelectedCards(prev => prev.includes(card.id) ? prev.filter(id => id !== card.id) : [...prev, card.id])}
-        className={`card ${size} ${isJoker ? 'joker' : isRed ? 'red' : 'black'} ${isSelected ? 'selected' : ''} ${isSelectable ? 'selectable' : ''}`}>
+        className={`card ${size} ${isJoker ? 'joker-card' : ''} ${isRed ? 'red' : 'black'} ${isSelected ? 'selected' : ''} ${isSelectable ? 'selectable' : ''}`}>
         {isJoker ? (
-          <div className="card-content joker-symbol">{card.suit}</div>
+          <>
+            <div className="card-top-left">
+              <div className="card-rank joker-text">J<br/>O<br/>K<br/>E<br/>R</div>
+            </div>
+            <div className="joker-main-symbol">{card.suit}</div>
+            <div className="card-bottom-right">
+              <div className="card-rank joker-text">J<br/>O<br/>K<br/>E<br/>R</div>
+            </div>
+          </>
         ) : (
           <>
             <div className="card-top-left">
@@ -336,8 +344,10 @@ const DouDiZhuGame: React.FC = () => {
                 <button onClick={() => handlePass(0)} disabled={lastPlayedCards.length === 0} className="btn btn-pass-card">过牌</button>
               </div>
             )}
-            <div className="hand-cards">
-              {players[0].cards.map(c => renderCard(c, currentPlayer === 0, selectedCards.includes(c.id), 'normal'))}
+            <div className="hand-cards-scroll-container">
+              <div className="hand-cards">
+                {players[0].cards.map(c => renderCard(c, currentPlayer === 0, selectedCards.includes(c.id), 'normal'))}
+              </div>
             </div>
           </div>
         )}
