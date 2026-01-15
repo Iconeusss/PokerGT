@@ -248,7 +248,20 @@ const DouDiZhuGame: React.FC = () => {
     return (
       <div key={card.id} onClick={() => isSelectable && setSelectedCards(prev => prev.includes(card.id) ? prev.filter(id => id !== card.id) : [...prev, card.id])}
         className={`card ${size} ${isJoker ? 'joker' : isRed ? 'red' : 'black'} ${isSelected ? 'selected' : ''} ${isSelectable ? 'selectable' : ''}`}>
-        {isJoker ? <div className="card-content joker-symbol">{card.suit}</div> : <><div className="card-suit">{card.suit}</div><div className="card-rank">{card.rank}</div></>}
+        {isJoker ? (
+          <div className="card-content joker-symbol">{card.suit}</div>
+        ) : (
+          <>
+            <div className="card-top-left">
+              <div className="card-rank">{card.rank}</div>
+              <div className="card-suit">{card.suit}</div>
+            </div>
+            <div className="card-bottom-right">
+              <div className="card-rank">{card.rank}</div>
+              <div className="card-suit">{card.suit}</div>
+            </div>
+          </>
+        )}
       </div>
     );
   };

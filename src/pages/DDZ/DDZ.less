@@ -15,8 +15,8 @@
 @color-text-muted: #6b7280;
 
 // 尺寸变量
-@card-width: 1.6rem;
-@card-height: 3rem;
+@card-width: 5rem;
+@card-height: 7rem;
 @card-width-small: 2.5rem;
 @card-height-small: 3.5rem;
 @border-radius: 0.5rem;
@@ -367,9 +367,45 @@ body,
 
   .hand-cards {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 0.25rem;
+    align-items: center;
+    padding-top: 1rem;
+    min-height: 8rem;
+
+    .card {
+      margin: 0;
+      margin-left: -2.5rem; // 调整负边距，确保内容可见
+      box-shadow: -2px 0 4px rgba(0, 0, 0, 0.2); // 侧边阴影增加立体感
+      transition: transform 0.2s, margin 0.2s;
+
+      &:first-child {
+        margin-left: 0;
+      }
+
+      // 悬停效果
+      &:hover {
+        transform: translateY(-1rem);
+        z-index: 100;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      }
+
+      // 选中状态
+      &.selected {
+        transform: translateY(-1.5rem);
+        box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+      }
+
+      // 选中且悬停
+      &.selected:hover {
+        transform: translateY(-1.5rem);
+      }
+
+      // 响应式：仅调整边距
+      @media (max-width: 768px) {
+        margin-left: -1.8rem;
+      }
+    }
   }
 }
 
@@ -382,14 +418,61 @@ body,
   border: 2px solid @color-border;
   margin: 0.125rem;
   transition: all @transition-fast;
+  position: relative;
+
+  // 统一风格
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: @color-card-bg;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0.25rem;
+  background: #fdfdfd;
   box-shadow: @shadow-card;
   font-weight: bold;
   cursor: default;
+
+  // 内部元素样式
+  .card-top-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 1.5rem;
+
+    .card-rank {
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .card-suit {
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+  }
+
+  .card-bottom-right {
+    position: absolute;
+    bottom: 0.2rem;
+    right: 0.2rem;
+    transform: rotate(180deg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .card-rank {
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .card-suit {
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+  }
+
+  .joker-symbol {
+    font-size: 2.5rem;
+    align-self: center;
+    margin: auto;
+    margin-top: 1rem;
+  }
 
   &.small {
     width: @card-width-small;
@@ -398,11 +481,9 @@ body,
     .card-suit {
       font-size: 0.625rem;
     }
-
     .card-rank {
       font-size: 1rem;
     }
-
     .joker-symbol {
       font-size: 1.125rem;
     }
@@ -411,44 +492,28 @@ body,
   &.red {
     color: @color-card-red;
   }
-
   &.black {
     color: @color-card-black;
   }
-
   &.joker {
     color: @color-joker;
   }
 
   &.selected {
     background: #dbeafe;
-    border-color: @color-border-active;
+    border-color: @color-primary;
     transform: translateY(-0.75rem);
   }
 
   &.selectable {
     cursor: pointer;
-
     &:hover {
       border-color: @color-border-active;
       transform: translateY(-0.25rem);
     }
-
     &.selected:hover {
       transform: translateY(-0.75rem);
     }
-  }
-
-  .card-suit {
-    font-size: 0.75rem;
-  }
-
-  .card-rank {
-    font-size: 1.5rem;
-  }
-
-  .joker-symbol {
-    font-size: 2rem;
   }
 }
 
@@ -459,15 +524,21 @@ body,
   }
 
   .card {
-    width: 3rem;
-    height: 4.5rem;
+    width: 3.5rem;
+    height: 5rem;
 
-    .card-rank {
-      font-size: 1.25rem;
+    .card-top-left,
+    .card-bottom-right {
+      .card-rank {
+        font-size: 1.5rem;
+      }
+      .card-suit {
+        font-size: 1rem;
+      }
     }
 
     .joker-symbol {
-      font-size: 1.5rem;
+      font-size: 1.8rem;
     }
   }
 
