@@ -1,3 +1,5 @@
+@import "variables.less";
+
 #root {
   /* max-width: 1280px; */
   /* margin: 0 auto; */
@@ -18,7 +20,7 @@
     绿: #dcfce7 (green-100)
     蓝: #dbeafe (blue-100)
   */
-  background: linear-gradient(135deg, #fee2e2, #dcfce7, #dbeafe);
+  background: linear-gradient(135deg, #fee2e2, #dbeafe, #dcfce7);
   color: #1f2937; /* 灰色 800，深色文字以保证对比度 */
 }
 
@@ -34,14 +36,19 @@
 
 .game-select {
   display: flex;
+  flex-direction: row;
   gap: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
 }
 
 .game-btn {
   padding: 1.5rem 3rem;
   font-size: 1.5rem;
   border: none;
-  border-radius: 1rem;
+  border-radius: 2rem;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   color: white;
@@ -55,11 +62,16 @@
 }
 
 .ddz-btn {
-  background: linear-gradient(135deg, #1a4d2e, #2d6a45);
+  background: linear-gradient(135deg, @color-background-ddz, @color-background-ddz-light);
   box-shadow: 0 4px 6px rgba(26, 77, 46, 0.4);
 }
 
 .gd-btn {
-  background: linear-gradient(135deg, #4a0404, #7f1d1d);
+  background: linear-gradient(135deg, @color-background-gd, @color-background-gd-light);  
+  box-shadow: 0 4px 6px rgba(74, 4, 4, 0.4);
+}
+
+.dglz-btn {
+  background: linear-gradient(135deg, @color-background-dglz, @color-background-dglz-light);
   box-shadow: 0 4px 6px rgba(74, 4, 4, 0.4);
 }

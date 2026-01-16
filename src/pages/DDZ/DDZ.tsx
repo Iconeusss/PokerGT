@@ -81,7 +81,7 @@ const shuffleDeck = (deck: Card[]): Card[] => {
 };
 
 // --- 牌型校验逻辑 ---
-const getCardType = (cards: Card[]): CardType | null => {
+const getDDZType = (cards: Card[]): CardType | null => {
   if (cards.length === 0) return null;
   const sorted = [...cards].sort((a, b) => a.value - b.value);
   const values = sorted.map((c) => c.value);
@@ -194,8 +194,8 @@ const getCardType = (cards: Card[]): CardType | null => {
 
 const canBeat = (playedCards: Card[], lastCards: Card[]): boolean => {
   if (!lastCards || lastCards.length === 0) return true;
-  const played = getCardType(playedCards);
-  const last = getCardType(lastCards);
+  const played = getDDZType(playedCards);
+  const last = getDDZType(lastCards);
   if (!played || !last) return !last;
   if (played.type === "rocket") return true;
   if (played.type === "bomb") {
@@ -261,7 +261,7 @@ const findSmartAICards = (
   players: Player[],
   myIndex: number
 ): Card[] | null => {
-  const lastType = lastCards.length > 0 ? getCardType(lastCards) : null;
+  const lastType = lastCards.length > 0 ? getDDZType(lastCards) : null;
   const opponentCount = players[0].cards.length; // 兼容旧逻辑变量名
 
   // 1. 整理手牌
@@ -660,7 +660,7 @@ const findSmartAICards = (
   return analysis[distinctValues[0]];
 };
 
-const DouDiZhuGame: React.FC = () => {
+const DouDiZhu: React.FC = () => {
   const navigate = useNavigate();
   // --- 原有状态保持不变 ---
   const [players, setPlayers] = useState<Player[]>([
@@ -781,7 +781,7 @@ const DouDiZhuGame: React.FC = () => {
 
   // --- 核心动作封装 ---
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
-    // const type = getCardType(cardsToPlay);
+    // const type = getDDZType(cardsToPlay);
     const newPlayers = [...players];
     newPlayers[playerId].cards = newPlayers[playerId].cards.filter(
       (card) => !cardsToPlay.find((c) => c.id === card.id)
@@ -830,7 +830,7 @@ const DouDiZhuGame: React.FC = () => {
     const selected = players[0].cards.filter((card) =>
       selectedCards.includes(card.id)
     );
-    if (!getCardType(selected)) return setMessage("无效牌型");
+    if (!getDDZType(selected)) return setMessage("无效牌型");
     if (!canBeat(selected, lastPlayedCards)) return setMessage("压不过上家");
     handlePlay(0, selected);
   };
@@ -970,8 +970,7 @@ const DouDiZhuGame: React.FC = () => {
             }
           }
         }}
-        // 兼容点击（如果不拖动，pointerdown -> pointerup 也会触发全局 pointerup 来切换状态）
-        // 所以这里不需要 onClick 了，全靠 pointer 事件处理
+        
         className={`card ${size} ${isJoker ? "joker-card" : ""} ${
           isRed ? "red" : "black"
         } ${displaySelected ? "selected" : ""} ${
@@ -1499,7 +1498,9 @@ const DouDiZhuGame: React.FC = () => {
                   (gamePhase === "playing" || gamePhase === "bidding")
                     ? "active"
                     : ""
-                } ${players[1].isLandlord ? "landlord" : ""}`}
+                } ${players[1].isLandlord ? "landlord" : ""} ${
+                  gamePhase === "end" && lastPlayerId === 1 ? "winner" : ""
+                }`}
               >
                 <h3 className="player-name">{players[1].name}</h3>
                 {gamePhase !== "init" && (
@@ -1564,7 +1565,9 @@ const DouDiZhuGame: React.FC = () => {
                   (gamePhase === "playing" || gamePhase === "bidding")
                     ? "active"
                     : ""
-                } ${players[2].isLandlord ? "landlord" : ""}`}
+                } ${players[2].isLandlord ? "landlord" : ""} ${
+                  gamePhase === "end" && lastPlayerId === 2 ? "winner" : ""
+                }`}
               >
                 <h3 className="player-name">{players[2].name}</h3>
                 {gamePhase !== "init" && (
@@ -1595,7 +1598,9 @@ const DouDiZhuGame: React.FC = () => {
           <div
             className={`player-hand ${
               players[0].isLandlord ? "landlord" : ""
-            } ${currentPlayer === 0 ? "active" : ""}`}
+            } ${currentPlayer === 0 ? "active" : ""} ${
+              gamePhase === "end" && lastPlayerId === 0 ? "winner" : ""
+            }`}
             style={{ position: "relative" }}
           >
             <div className="hand-header">
@@ -1679,4 +1684,4 @@ const DouDiZhuGame: React.FC = () => {
   );
 };
 
-export default DouDiZhuGame;
+export default DouDiZhu;

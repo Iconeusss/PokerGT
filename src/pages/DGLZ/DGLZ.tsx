@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import "./GD.less";
+import "./DGLZ.less";
 
+// --- 基础接口与常量 ---
 interface Card {
   suit: string;
   rank: string;
   id: string;
   value: number;
-}
-
-interface CardType {
-  type: string;
-  value: number;
-  count: number;
 }
 
 const suits = ["♠", "♥", "♣", "♦"];
@@ -73,193 +68,7 @@ const shuffleDeck = (deck: Card[]): Card[] => {
   return newDeck;
 };
 
-const getGDType = (cards: Card[]): CardType | null => {
-  if (cards.length === 0) return null;
-  const sorted = [...cards].sort((a, b) => a.value - b.value);
-  const values = sorted.map((c) => c.value);
-  const len = cards.length;
-
-  const counts: { [key: number]: number } = {};
-  values.forEach((v) => {
-    counts[v] = (counts[v] || 0) + 1;
-  });
-  const freq = Object.entries(counts)
-    .map(([v, c]) => ({ val: Number(v), count: c }))
-    .sort((a, b) => b.count - a.count || b.val - a.val);
-
-  const allSameSuit =
-    cards.every((c) => c.suit === cards[0].suit && c.value < 16) && len >= 5;
-  const distinctValuesSorted = Array.from(new Set(values)).sort(
-    (a, b) => a - b
-  );
-
-  if (
-    allSameSuit &&
-    distinctValuesSorted.length === len &&
-    distinctValuesSorted[len - 1] < 15 &&
-    distinctValuesSorted[len - 1] - distinctValuesSorted[0] === len - 1
-  ) {
-    return {
-      type: "straight_flush_bomb",
-      value: 1000 + distinctValuesSorted[len - 1],
-      count: len,
-    };
-  }
-
-  if (
-    len >= 2 &&
-    cards.every((c) => c.rank === "joker" || c.rank === "JOKER")
-  ) {
-    return { type: "joker_bomb", value: 2000 + len, count: len };
-  }
-
-  if (len === 1) {
-    return { type: "single", value: values[0], count: 1 };
-  }
-
-  if (len === 2 && values[0] === values[1]) {
-    return { type: "pair", value: values[0], count: 2 };
-  }
-
-  if (len === 3 && freq[0].count === 3) {
-    return { type: "triple", value: freq[0].val, count: 3 };
-  }
-
-  if (freq[0].count === 3) {
-    if (len === 4) {
-      return { type: "triple_single", value: freq[0].val, count: 4 };
-    }
-    if (len === 5 && freq[1] && freq[1].count === 2) {
-      return { type: "triple_pair", value: freq[0].val, count: 5 };
-    }
-  }
-
-  if (
-    len >= 5 &&
-    freq.every((f) => f.count === 1) &&
-    values[len - 1] < 15 &&
-    values[len - 1] - values[0] === len - 1
-  ) {
-    return { type: "straight", value: values[len - 1], count: len };
-  }
-
-  if (
-    len >= 6 &&
-    len % 2 === 0 &&
-    freq.every((f) => f.count === 2) &&
-    values[len - 1] < 15
-  ) {
-    const pairValues = freq.map((f) => f.val).sort((a, b) => a - b);
-    if (
-      pairValues[pairValues.length - 1] - pairValues[0] ===
-      pairValues.length - 1
-    ) {
-      return {
-        type: "consecutive_pairs",
-        value: pairValues[pairValues.length - 1],
-        count: len,
-      };
-    }
-  }
-
-  const trioValues = freq
-    .filter((f) => f.count >= 3 && f.val < 15)
-    .map((f) => f.val)
-    .sort((a, b) => a - b);
-
-  if (trioValues.length >= 2) {
-    for (let i = 0; i < trioValues.length; i++) {
-      let consecutiveCount = 1;
-      let maxTrioVal = trioValues[i];
-      for (let j = i + 1; j < trioValues.length; j++) {
-        if (trioValues[j] === trioValues[j - 1] + 1 && trioValues[j] < 15) {
-          consecutiveCount++;
-          maxTrioVal = trioValues[j];
-        } else {
-          break;
-        }
-      }
-
-      if (consecutiveCount >= 2) {
-        if (len === consecutiveCount * 3) {
-          return { type: "plane", value: maxTrioVal, count: len };
-        }
-        if (len === consecutiveCount * 4) {
-          return {
-            type: "plane_with_singles",
-            value: maxTrioVal,
-            count: len,
-          };
-        }
-        if (len === consecutiveCount * 5) {
-          const planeSequence: number[] = [];
-          for (let k = 0; k < consecutiveCount; k++) {
-            planeSequence.push(maxTrioVal - k);
-          }
-          const remainingValues = [...values];
-          for (const v of planeSequence) {
-            for (let k = 0; k < 3; k++) {
-              const idx = remainingValues.indexOf(v);
-              if (idx > -1) {
-                remainingValues.splice(idx, 1);
-              }
-            }
-          }
-          const remCounts: { [key: number]: number } = {};
-          remainingValues.forEach((v) => {
-            remCounts[v] = (remCounts[v] || 0) + 1;
-          });
-          const allPairs = Object.values(remCounts).every((c) => c % 2 === 0);
-          if (allPairs) {
-            return {
-              type: "plane_with_pairs",
-              value: maxTrioVal,
-              count: len,
-            };
-          }
-        }
-      }
-    }
-  }
-
-  if (freq[0].count === 4 && len === 6) {
-    const others = values.filter((v) => v !== freq[0].val);
-    const othersCount: { [key: number]: number } = {};
-    others.forEach((v) => {
-      othersCount[v] = (othersCount[v] || 0) + 1;
-    });
-    const countsArr = Object.values(othersCount);
-    if (
-      countsArr.length === 2 &&
-      countsArr.every((c) => c === 1)
-    ) {
-      return {
-        type: "four_two_singles",
-        value: freq[0].val,
-        count: len,
-      };
-    }
-    if (
-      countsArr.length === 2 &&
-      countsArr.every((c) => c === 2)
-    ) {
-      return {
-        type: "four_two_pairs",
-        value: freq[0].val,
-        count: len,
-      };
-    }
-  }
-
-  if (freq[0].count >= 4 && freq[0].count === len) {
-    const bombStrength = freq[0].val + freq[0].count * 100;
-    return { type: "bomb", value: bombStrength, count: len };
-  }
-
-  return null;
-};
-
-const GuanDan: React.FC = () => {
+const DaGuaiLuZi: React.FC = () => {
   const navigate = useNavigate();
   // --- 状态管理 ---
   const [myCards, setMyCards] = useState<Card[]>([]);
@@ -284,7 +93,6 @@ const GuanDan: React.FC = () => {
 
   // --- 全局事件监听 (处理滑动结束) ---
   useEffect(() => {
-    getGDType(myCards); //避免问题
     const handleGlobalPointerUp = () => {
       // 取消待处理的节流更新
       if (rafRef.current !== null) {
@@ -425,8 +233,8 @@ const GuanDan: React.FC = () => {
   };
 
   return (
-    <div className="game-container-gd">
-        <h1 className="game-title">掼蛋 (开发中)</h1>
+    <div className="game-container-dglz">
+        <h1 className="game-title">大怪路子(开发中)</h1>
 
         <div style={{ position: "absolute", top: "1rem", right: "1rem", zIndex: 100 }}>
           <button
@@ -451,4 +259,4 @@ const GuanDan: React.FC = () => {
   );
 };
 
-export default GuanDan;
+export default DaGuaiLuZi;
