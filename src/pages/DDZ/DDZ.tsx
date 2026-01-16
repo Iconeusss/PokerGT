@@ -216,73 +216,369 @@ const findSmartAICards = (
   opponentCount: number
 ): Card[] | null => {
   const lastType = lastCards.length > 0 ? getCardType(lastCards) : null;
+
+  // 1. 整理手牌
   const analysis: { [key: number]: Card[] } = {};
   hand.forEach((c) => {
     if (!analysis[c.value]) analysis[c.value] = [];
     analysis[c.value].push(c);
   });
-  const values = Object.keys(analysis)
+  // 排序后的独立点数
+  const distinctValues = Object.keys(analysis)
     .map(Number)
     .sort((a, b) => a - b);
 
-  const findSafe = (min: number, req: number) =>
-    values.find((v) => v > min && analysis[v].length === req && v < 15) ||
-    values.find(
-      (v) =>
-        v > min && analysis[v].length > req && analysis[v].length < 4 && v < 15
-    );
-
-  if (!lastType) {
-    // AI 主动出牌
-    const t = values.find((v) => analysis[v].length === 3);
-    if (t) {
-      const wing = values.find((v) => v !== t && analysis[v].length === 1);
-      return wing ? [...analysis[t], analysis[wing][0]] : analysis[t];
-    }
-    const p = values.find((v) => analysis[v].length === 2);
-    return p ? analysis[p] : [hand[0]];
-  }
-
-  // AI 压牌逻辑
-  let res: Card[] | null = null;
-  if (lastType.type === "single") {
-    const v =
-      opponentCount <= 2
-        ? values[values.length - 1]
-        : findSafe(lastType.value, 1);
-    if (v && v > lastType.value) res = [analysis[v][0]];
-  } else if (lastType.type === "pair") {
-    const v = findSafe(lastType.value, 2);
-    if (v) res = analysis[v].slice(0, 2);
-  } else if (lastType.type === "straight") {
-    for (let i = 0; i <= values.length - lastType.count; i++) {
-      let seq: Card[] = [];
-      for (let j = 0; j < lastType.count; j++) {
-        const val = values[i] + j;
-        if (
-          analysis[val] &&
-          val > lastType.value - lastType.count + 1 &&
-          val < 15
-        )
-          seq.push(analysis[val][0]);
+  // 辅助函数：查找大于 minVal 的 count 张牌
+  const findHigher = (
+    minVal: number,
+    count: number,
+    excludeVals: number[] = []
+  ): Card[] | null => {
+    for (const v of distinctValues) {
+      if (
+        v > minVal &&
+        !excludeVals.includes(v) &&
+        analysis[v].length >= count
+      ) {
+        // 尽量拆分，但如果是炸弹且不需要炸弹，则尽量不拆 (简单策略：尽量保留炸弹)
+        if (analysis[v].length === 4 && count < 4) continue;
+        // 如果是火箭，不拆
+        if (v === 16 || v === 17) {
+          const hasRocket =
+            analysis[16]?.length === 1 && analysis[17]?.length === 1;
+          if (hasRocket && count === 1) continue;
+        }
+        return analysis[v].slice(0, count);
       }
-      if (seq.length === lastType.count) {
-        res = seq;
+    }
+    // 如果没有合适的非炸弹/火箭牌，再考虑拆炸弹
+    for (const v of distinctValues) {
+      if (
+        v > minVal &&
+        !excludeVals.includes(v) &&
+        analysis[v].length >= count
+      ) {
+        return analysis[v].slice(0, count);
+      }
+    }
+    return null;
+  };
+
+  // 辅助函数：查找顺子
+  const findStraight = (minVal: number, length: number): Card[] | null => {
+    // 顺子不能包含 2 (15) 和 王 (16, 17)
+    for (let i = 0; i < distinctValues.length; i++) {
+      const startVal = distinctValues[i];
+      if (startVal <= minVal) continue;
+      if (startVal + length - 1 >= 15) break; // 超过 A 了
+
+      let seq: Card[] = [];
+      let valid = true;
+      for (let j = 0; j < length; j++) {
+        const target = startVal + j;
+        if (!analysis[target] || analysis[target].length === 0) {
+          valid = false;
+          break;
+        }
+        seq.push(analysis[target][0]);
+      }
+      if (valid) return seq;
+    }
+    return null;
+  };
+
+  // 辅助函数：查找连对
+  const findConsecutivePairs = (
+    minVal: number,
+    length: number
+  ): Card[] | null => {
+    const pairCount = length / 2;
+    for (let i = 0; i < distinctValues.length; i++) {
+      const startVal = distinctValues[i];
+      if (startVal <= minVal) continue;
+      if (startVal + pairCount - 1 >= 15) break;
+
+      let seq: Card[] = [];
+      let valid = true;
+      for (let j = 0; j < pairCount; j++) {
+        const target = startVal + j;
+        if (!analysis[target] || analysis[target].length < 2) {
+          valid = false;
+          break;
+        }
+        seq.push(...analysis[target].slice(0, 2));
+      }
+      if (valid) return seq;
+    }
+    return null;
+  };
+
+  // 辅助函数：查找飞机
+  const findPlane = (
+    minVal: number,
+    length: number,
+    subType: "plane" | "plane_with_singles" | "plane_with_pairs"
+  ): Card[] | null => {
+    let numTrios = 0;
+    if (subType === "plane") numTrios = length / 3;
+    if (subType === "plane_with_singles") numTrios = length / 4;
+    if (subType === "plane_with_pairs") numTrios = length / 5;
+
+    for (let i = 0; i < distinctValues.length; i++) {
+      const startVal = distinctValues[i];
+      if (startVal <= minVal) continue;
+      if (startVal + numTrios - 1 >= 15) break;
+
+      // 检查是否有连续的三张
+      let trios: Card[] = [];
+      let trioVals: number[] = [];
+      let validTrios = true;
+      for (let j = 0; j < numTrios; j++) {
+        const target = startVal + j;
+        if (!analysis[target] || analysis[target].length < 3) {
+          validTrios = false;
+          break;
+        }
+        trios.push(...analysis[target].slice(0, 3));
+        trioVals.push(target);
+      }
+
+      if (validTrios) {
+        // 找到了主体飞机，现在找翅膀
+        if (subType === "plane") return trios;
+
+        if (subType === "plane_with_singles") {
+          let wings: Card[] = [];
+          for (const v of distinctValues) {
+            if (trioVals.includes(v)) continue;
+            const countNeeded = numTrios - wings.length;
+            const available = analysis[v].length;
+            if (available === 4) continue; // 尽量不拆炸弹
+            const take = Math.min(countNeeded, available);
+            wings.push(...analysis[v].slice(0, take));
+            if (wings.length === numTrios) break;
+          }
+          if (wings.length === numTrios) return [...trios, ...wings];
+        }
+
+        if (subType === "plane_with_pairs") {
+          let wings: Card[] = [];
+          for (const v of distinctValues) {
+            if (trioVals.includes(v)) continue;
+            if (analysis[v].length >= 2) {
+              wings.push(...analysis[v].slice(0, 2));
+            }
+            if (wings.length === numTrios * 2) break;
+          }
+          if (wings.length === numTrios * 2) return [...trios, ...wings];
+        }
+      }
+    }
+    return null;
+  };
+
+  // 查找炸弹
+  const findBomb = (minVal: number): Card[] | null => {
+    const bombVal = distinctValues.find(
+      (v) => v > minVal && analysis[v].length === 4
+    );
+    return bombVal ? analysis[bombVal] : null;
+  };
+
+  // 查找火箭
+  const findRocket = (): Card[] | null => {
+    if (
+      analysis[16] &&
+      analysis[16].length === 1 &&
+      analysis[17] &&
+      analysis[17].length === 1
+    ) {
+      return [analysis[16][0], analysis[17][0]];
+    }
+    return null;
+  };
+
+  // --- 决策逻辑 ---
+
+  // 1. 如果是跟牌 (有 lastType)
+  if (lastType) {
+    let result: Card[] | null = null;
+
+    switch (lastType.type) {
+      case "single": {
+        const isEmergency = opponentCount <= 2;
+        if (isEmergency) {
+          const maxVal = distinctValues[distinctValues.length - 1];
+          if (maxVal > lastType.value) {
+            result = [analysis[maxVal][0]];
+          } else {
+            result = null;
+          }
+        } else {
+          result = findHigher(lastType.value, 1);
+        }
         break;
       }
+      case "pair":
+        result = findHigher(lastType.value, 2);
+        break;
+      case "triple":
+        result = findHigher(lastType.value, 3);
+        break;
+      case "triple_single": {
+        const trio = findHigher(lastType.value, 3);
+        if (trio) {
+          const wing = findHigher(0, 1, [trio[0].value]);
+          if (wing) result = [...trio, ...wing];
+        }
+        break;
+      }
+      case "triple_pair": {
+        const trio = findHigher(lastType.value, 3);
+        if (trio) {
+          const wing = findHigher(0, 2, [trio[0].value]);
+          if (wing) result = [...trio, ...wing];
+        }
+        break;
+      }
+      case "straight":
+        result = findStraight(lastType.value, lastType.count);
+        break;
+      case "consecutive_pairs":
+        result = findConsecutivePairs(lastType.value, lastType.count);
+        break;
+      case "plane":
+      case "plane_with_singles":
+      case "plane_with_pairs":
+        result = findPlane(
+          lastType.value,
+          lastType.count,
+          lastType.type as any
+        );
+        break;
+      case "bomb":
+        result = findBomb(lastType.value);
+        break;
+      case "rocket":
+        return null;
     }
+
+    if (!result && lastType.type !== "rocket") {
+      if (lastType.type !== "bomb") {
+        result = findBomb(0);
+      }
+      if (!result) {
+        result = findRocket();
+      }
+    }
+
+    return result;
   }
 
-  // 兜底炸弹
-  if (!res) {
-    const b = values.find(
-      (v) =>
-        analysis[v].length === 4 &&
-        (lastType.type !== "bomb" || v > lastType.value)
-    );
-    if (b) res = analysis[b];
+  // 2. 如果是主动出牌 (Lead)
+  // 试探飞机
+  const trios = distinctValues.filter((v) => analysis[v].length === 3);
+  if (trios.length > 0) {
+    let planeStart = -1;
+    let planeLen = 0;
+    for (let i = 0; i < trios.length; i++) {
+      if (i > 0 && trios[i] === trios[i - 1] + 1 && trios[i] < 15) {
+        if (planeLen === 0) {
+          planeStart = trios[i - 1];
+          planeLen = 2;
+        } else {
+          planeLen++;
+        }
+      } else {
+        if (planeLen >= 2) break;
+        planeLen = 0;
+      }
+    }
+    if (planeLen >= 2) {
+      const plane = findPlane(
+        planeStart - 1,
+        planeLen * 4,
+        "plane_with_singles"
+      );
+      if (plane) return plane;
+      const planeP = findPlane(
+        planeStart - 1,
+        planeLen * 5,
+        "plane_with_pairs"
+      );
+      if (planeP) return planeP;
+      const planePure = findPlane(planeStart - 1, planeLen * 3, "plane");
+      if (planePure) return planePure;
+    }
+
+    // 三带
+    const tVal = trios[0];
+    const t = analysis[tVal];
+    const wing1 = findHigher(0, 1, [tVal]);
+    if (wing1) return [...t, ...wing1];
+    const wing2 = findHigher(0, 2, [tVal]);
+    if (wing2) return [...t, ...wing2];
+    return t;
   }
-  return res;
+
+  // 试探连对
+  const pairs = distinctValues.filter((v) => analysis[v].length >= 2 && v < 15);
+  let cpStart = -1;
+  let cpLen = 0;
+  for (let i = 0; i < pairs.length; i++) {
+    if (i > 0 && pairs[i] === pairs[i - 1] + 1) {
+      if (cpLen === 0) {
+        cpStart = pairs[i - 1];
+        cpLen = 2;
+      } else {
+        cpLen++;
+      }
+    } else {
+      if (cpLen >= 3) break;
+      cpLen = 0;
+    }
+  }
+  if (cpLen >= 3) {
+    return findConsecutivePairs(cpStart - 1, cpLen * 2);
+  }
+
+  // 试探顺子
+  const singles = distinctValues.filter((v) => v < 15);
+  let strStart = -1;
+  let strLen = 0;
+  for (let i = 0; i < singles.length; i++) {
+    if (i > 0 && singles[i] === singles[i - 1] + 1) {
+      if (strLen === 0) {
+        strStart = singles[i - 1];
+        strLen = 2;
+      } else {
+        strLen++;
+      }
+    } else {
+      if (strLen >= 5) break;
+      strLen = 0;
+    }
+  }
+  if (strLen >= 5) {
+    return findStraight(strStart - 1, strLen);
+  }
+
+  // 出对子
+  const firstPairVal = distinctValues.find((v) => analysis[v].length === 2);
+  if (firstPairVal !== undefined) {
+    return analysis[firstPairVal];
+  }
+
+  // 出单张
+  const firstSingleVal = distinctValues.find((v) => analysis[v].length === 1);
+  if (firstSingleVal !== undefined) {
+    return analysis[firstSingleVal];
+  }
+
+  const anyVal = distinctValues.find((v) => analysis[v].length < 4);
+  if (anyVal) return [analysis[anyVal][0]];
+
+  return analysis[distinctValues[0]];
 };
 
 const DouDiZhuGame: React.FC = () => {
