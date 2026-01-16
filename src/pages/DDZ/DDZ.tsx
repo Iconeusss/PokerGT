@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import "./DDZ.less";
 
 // --- 基础接口与常量 ---
@@ -209,13 +210,59 @@ const canBeat = (playedCards: Card[], lastCards: Card[]): boolean => {
   );
 };
 
+const evaluateLandlordHand = (hand: Card[]): number => {
+  const counts: { [key: number]: number } = {};
+  hand.forEach((c) => {
+    counts[c.value] = (counts[c.value] || 0) + 1;
+  });
+  const distinct = Object.keys(counts)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let score = 0;
+  hand.forEach((card) => {
+    if (card.value >= 17) {
+      score += 7;
+    } else if (card.value === 16) {
+      score += 6;
+    } else if (card.value === 15) {
+      score += 4;
+    } else if (card.value === 14) {
+      score += 3;
+    } else if (card.value === 13) {
+      score += 2.5;
+    } else if (card.value === 12) {
+      score += 2;
+    } else if (card.value >= 10) {
+      score += 1;
+    } else {
+      score += 0.3;
+    }
+  });
+  distinct.forEach((v) => {
+    const count = counts[v];
+    if (count === 4) {
+      score += 8;
+    } else if (count === 3) {
+      score += v >= 11 ? 4 : 2;
+    } else if (count === 2) {
+      if (v >= 11) score += 1.5;
+      else if (v >= 8) score += 0.8;
+    }
+  });
+  const smallSingles = distinct.filter((v) => v <= 8 && counts[v] === 1).length;
+  score -= smallSingles * 0.4;
+  return score;
+};
+
 // --- AI 核心搜索逻辑 ---
 const findSmartAICards = (
   hand: Card[],
   lastCards: Card[],
-  opponentCount: number
+  players: Player[],
+  myIndex: number
 ): Card[] | null => {
   const lastType = lastCards.length > 0 ? getCardType(lastCards) : null;
+  const opponentCount = players[0].cards.length; // 兼容旧逻辑变量名
 
   // 1. 整理手牌
   const analysis: { [key: number]: Card[] } = {};
@@ -464,11 +511,14 @@ const findSmartAICards = (
     }
 
     if (!result && lastType.type !== "rocket") {
-      if (lastType.type !== "bomb") {
-        result = findBomb(0);
-      }
-      if (!result) {
-        result = findRocket();
+      const shouldUseBombOrRocket = opponentCount <= 3 || hand.length <= 4;
+      if (shouldUseBombOrRocket) {
+        if (lastType.type !== "bomb") {
+          result = findBomb(0);
+        }
+        if (!result) {
+          result = findRocket();
+        }
       }
     }
 
@@ -476,9 +526,23 @@ const findSmartAICards = (
   }
 
   // 2. 如果是主动出牌 (Lead)
-  // 试探飞机
+  // 检查是否有对手牌量过少（进入残局防守模式）
+  const me = players[myIndex];
+  // 敌对阵营：如果我是地主，对手是农民；如果我是农民，对手是地主
+  const opponents = players.filter(
+    (p) => p.id !== me.id && p.isLandlord !== me.isLandlord
+  );
+  // 只要有任意对手手牌少于 5 张，就开启防守模式
+  const isEndgameDefense = opponents.some((p) => p.cards.length < 5);
+
+  const isEarlyGame = !isEndgameDefense && hand.length >= 14;
+
+  // 试探飞机 / 三带（早期尽量不用特别大的三张开局）
   const trios = distinctValues.filter((v) => analysis[v].length === 3);
-  if (trios.length > 0) {
+  const hasSafeTrios =
+    trios.length > 0 &&
+    (!isEarlyGame || trios[0] <= 11);
+  if (hasSafeTrios) {
     let planeStart = -1;
     let planeLen = 0;
     for (let i = 0; i < trios.length; i++) {
@@ -570,9 +634,24 @@ const findSmartAICards = (
   }
 
   // 出单张
-  const firstSingleVal = distinctValues.find((v) => analysis[v].length === 1);
-  if (firstSingleVal !== undefined) {
-    return analysis[firstSingleVal];
+  // 策略：如果是残局防守模式，且手牌中只剩下单张（或没有其他牌型可出），先出最大的单张；否则出最小的单张
+  const singleVals = distinctValues.filter((v) => analysis[v].length === 1);
+  if (singleVals.length > 0) {
+    if (isEndgameDefense) {
+      // 检查是否只剩下单张（即没有对子、三张等其他牌型）
+      // 这里简单判断：如果所有手牌都是单张（distinctValues长度 == hand.length），或者只剩单张和炸弹/火箭但不想拆
+      // 更精确的逻辑：如果前面所有的组合判断（飞机、连对、顺子、对子）都失败了，才走到这里。
+      // 所以只要判断是否还有其他非单张的牌（比如炸弹、三张但没带出去的）
+      const hasOtherTypes = distinctValues.some((v) => analysis[v].length >= 2);
+
+      if (!hasOtherTypes) {
+        // 确实没别的牌型了，只能出单张 -> 从大到小出，拦截对手
+        const maxSingleVal = singleVals[singleVals.length - 1];
+        return analysis[maxSingleVal];
+      }
+    }
+    // 默认情况或还有其他牌型配合时，保留大牌，出最小单张
+    return analysis[singleVals[0]];
   }
 
   const anyVal = distinctValues.find((v) => analysis[v].length < 4);
@@ -582,6 +661,7 @@ const findSmartAICards = (
 };
 
 const DouDiZhuGame: React.FC = () => {
+  const navigate = useNavigate();
   // --- 原有状态保持不变 ---
   const [players, setPlayers] = useState<Player[]>([
     { id: 0, name: "玩家1 (你)", cards: [], isLandlord: false, playCount: 0 },
@@ -603,6 +683,18 @@ const DouDiZhuGame: React.FC = () => {
   const [showRules, setShowRules] = useState(false);
   const [totalTurns, setTotalTurns] = useState(0);
 
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // 滑动选牌相关状态
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
+  const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
+  const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
+
+  // 用于节流的 ref
+  const dragEndIndexRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
   // --- 游戏流程 ---
   const startGame = () => {
     const deck = shuffleDeck(createDeck());
@@ -610,21 +702,21 @@ const DouDiZhuGame: React.FC = () => {
       {
         id: 0,
         name: "玩家1 (你)",
-        cards: deck.slice(0, 17).sort((a, b) => a.value - b.value),
+        cards: deck.slice(0, 17).sort((a, b) => b.value - a.value),
         isLandlord: false,
         playCount: 0,
       },
       {
         id: 1,
         name: "玩家2",
-        cards: deck.slice(17, 34).sort((a, b) => a.value - b.value),
+        cards: deck.slice(17, 34).sort((a, b) => b.value - a.value),
         isLandlord: false,
         playCount: 0,
       },
       {
         id: 2,
         name: "玩家3",
-        cards: deck.slice(34, 51).sort((a, b) => a.value - b.value),
+        cards: deck.slice(34, 51).sort((a, b) => b.value - a.value),
         isLandlord: false,
         playCount: 0,
       },
@@ -640,6 +732,7 @@ const DouDiZhuGame: React.FC = () => {
     setLandlordId(-1);
     setPassCount(0);
     setTotalTurns(0);
+    setSortOrder("desc"); // 默认大到小
     setMessage("叫地主阶段！玩家1先选择是否叫地主");
   };
 
@@ -650,7 +743,7 @@ const DouDiZhuGame: React.FC = () => {
       newPlayers[currentPlayer].cards = [
         ...newPlayers[currentPlayer].cards,
         ...baseCards,
-      ].sort((a, b) => a.value - b.value);
+      ].sort((a, b) => (sortOrder === "asc" ? a.value - b.value : b.value - a.value));
       setPlayers(newPlayers);
       setLandlordId(currentPlayer);
       setGamePhase("playing");
@@ -665,6 +758,25 @@ const DouDiZhuGame: React.FC = () => {
       setBiddingRound(biddingRound + 1);
       setMessage(`轮到${players[nextPlayer].name}叫地主`);
     }
+  };
+
+  // --- 切换排序 ---
+  const toggleSortOrder = () => {
+    const newOrder = sortOrder === "asc" ? "desc" : "asc";
+    setSortOrder(newOrder);
+
+    // 重新排序当前玩家的手牌
+    const newPlayers = [...players];
+    const myCards = [...newPlayers[0].cards];
+    
+    if (newOrder === "asc") {
+      myCards.sort((a, b) => a.value - b.value);
+    } else {
+      myCards.sort((a, b) => b.value - a.value);
+    }
+    
+    newPlayers[0].cards = myCards;
+    setPlayers(newPlayers);
   };
 
   // --- 核心动作封装 ---
@@ -726,7 +838,17 @@ const DouDiZhuGame: React.FC = () => {
   // --- AI 监听器 ---
   useEffect(() => {
     if (gamePhase === "bidding" && currentPlayer !== 0) {
-      const timer = setTimeout(() => callLandlord(Math.random() > 0.6), 1200);
+      const timer = setTimeout(() => {
+        const hand = players[currentPlayer].cards;
+        const score = evaluateLandlordHand(hand);
+        let call = false;
+        if (score >= 28) {
+          call = true;
+        } else if (score >= 20) {
+          call = Math.random() > 0.4;
+        }
+        callLandlord(call);
+      }, 1200);
       return () => clearTimeout(timer);
     }
     if (gamePhase === "playing" && currentPlayer !== 0) {
@@ -734,7 +856,8 @@ const DouDiZhuGame: React.FC = () => {
         const aiCards = findSmartAICards(
           players[currentPlayer].cards,
           lastPlayedCards,
-          players[0].cards.length
+          players,
+          currentPlayer
         );
         if (aiCards) handlePlay(currentPlayer, aiCards);
         else handlePass(currentPlayer);
@@ -743,30 +866,118 @@ const DouDiZhuGame: React.FC = () => {
     }
   }, [gamePhase, currentPlayer, lastPlayedCards]);
 
+  // 全局 pointerup 监听，用于结束滑动
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      // 取消待处理的节流更新
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+
+      if (isDragging && dragStartIndex !== null && dragEndIndex !== null) {
+        // 计算最终选中的范围
+        const min = Math.min(dragStartIndex, dragEndIndex);
+        const max = Math.max(dragStartIndex, dragEndIndex);
+
+        // 应用选中状态
+        const newSelected = new Set(selectedCards);
+        const myCards = players[0].cards;
+
+        for (let i = min; i <= max; i++) {
+          if (i >= 0 && i < myCards.length) {
+            if (dragMode === "select") {
+              newSelected.add(myCards[i].id);
+            } else {
+              newSelected.delete(myCards[i].id);
+            }
+          }
+        }
+
+        setSelectedCards(Array.from(newSelected));
+      }
+
+      // 重置状态
+      setIsDragging(false);
+      setDragStartIndex(null);
+      setDragEndIndex(null);
+    };
+
+    window.addEventListener("pointerup", handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener("pointerup", handleGlobalPointerUp);
+    };
+  }, [
+    isDragging,
+    dragStartIndex,
+    dragEndIndex,
+    dragMode,
+    players,
+    selectedCards,
+  ]);
+
   // --- UI 渲染函数 (保持原有 HTML 结构) ---
   const renderCard = (
     card: Card,
     isSelectable = false,
     isSelected = false,
-    size = "normal"
+    size = "normal",
+    index: number = -1
   ) => {
     const isRed =
       card.suit === "♥" || card.suit === "♦" || card.rank === "JOKER";
     const isJoker = card.rank === "joker" || card.rank === "JOKER";
+
+    // 计算滑动过程中的临时选中状态
+    let displaySelected = isSelected;
+    if (
+      isSelectable &&
+      isDragging &&
+      dragStartIndex !== null &&
+      dragEndIndex !== null &&
+      index !== -1
+    ) {
+      const min = Math.min(dragStartIndex, dragEndIndex);
+      const max = Math.max(dragStartIndex, dragEndIndex);
+      if (index >= min && index <= max) {
+        displaySelected = dragMode === "select";
+      }
+    }
+
     return (
       <div
         key={card.id}
-        onClick={() =>
-          isSelectable &&
-          setSelectedCards((prev) =>
-            prev.includes(card.id)
-              ? prev.filter((id) => id !== card.id)
-              : [...prev, card.id]
-          )
-        }
+        onPointerDown={(e) => {
+          if (isSelectable && index !== -1) {
+            e.preventDefault(); // 防止文本选择
+            e.stopPropagation(); // 防止冒泡
+            setIsDragging(true);
+            setDragStartIndex(index);
+            setDragEndIndex(index);
+            // 如果当前已经选中，则模式为取消选中，否则为选中
+            setDragMode(isSelected ? "deselect" : "select");
+          }
+        }}
+        onPointerEnter={() => {
+          if (isSelectable && isDragging && index !== -1) {
+            // 使用 requestAnimationFrame 进行节流，避免高频重绘
+            dragEndIndexRef.current = index;
+            if (rafRef.current === null) {
+              rafRef.current = requestAnimationFrame(() => {
+                setDragEndIndex(dragEndIndexRef.current);
+                rafRef.current = null;
+              });
+            }
+          }
+        }}
+        // 兼容点击（如果不拖动，pointerdown -> pointerup 也会触发全局 pointerup 来切换状态）
+        // 所以这里不需要 onClick 了，全靠 pointer 事件处理
         className={`card ${size} ${isJoker ? "joker-card" : ""} ${
           isRed ? "red" : "black"
-        } ${isSelected ? "selected" : ""} ${isSelectable ? "selectable" : ""}`}
+        } ${displaySelected ? "selected" : ""} ${
+          isSelectable ? "selectable" : ""
+        }`}
+        style={{ touchAction: "none" }} // 防止触摸滚动
       >
         {isJoker ? (
           <>
@@ -799,7 +1010,7 @@ const DouDiZhuGame: React.FC = () => {
   };
 
   return (
-    <div className="game-container">
+    <div className="game-container-ddz">
       {(gamePhase === "init" || gamePhase === "bidding") && (
         <button className="btn-rules" onClick={() => setShowRules(true)}>
           <span className="icon">📜</span> 规则
@@ -822,6 +1033,7 @@ const DouDiZhuGame: React.FC = () => {
             <h2 className="modal-title">游戏规则</h2>
             <div className="modal-body">
               <div className="rule-list">
+                <div className="rule-title">牌型</div>
                 <div className="rule-item">
                   <span className="rule-label">单张</span>
                   <div className="rule-cards">
@@ -1220,7 +1432,7 @@ const DouDiZhuGame: React.FC = () => {
                 </div>
               </div>
               <p style={{ marginTop: "1rem" }}>
-                <strong>胜负判定：</strong>地主跑光手牌获胜，否则农民获胜。
+                <strong>获胜条件：</strong>第一个出完所有手牌的玩家的阵营获胜（地主单独一方，两个农民同阵营）。
               </p>
             </div>
             <button
@@ -1240,11 +1452,28 @@ const DouDiZhuGame: React.FC = () => {
         <div className="message-box">
           <p className="message-text">{message}</p>
         </div>
-        <div className={`button-group ${gamePhase !== 'init' ? 'top-right' : ''}`}>
-          <button onClick={startGame} className="btn btn-primary">
-            {gamePhase === "init" ? "开始游戏" : "重新开始"}
+        <div className="button-group top-right">
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-home"
+            style={{ marginBottom: gamePhase !== "init" ? "0.5rem" : "0" }}
+          >
+            返回主页
           </button>
+          {gamePhase !== "init" && (
+            <button onClick={startGame} className="btn btn-red">
+              重新开始
+            </button>
+          )}
         </div>
+
+        {gamePhase === "init" && (
+          <div className="button-group">
+            <button onClick={startGame} className="btn btn-blue">
+              开始游戏
+            </button>
+          </div>
+        )}
 
         {gamePhase !== "init" && (
           <div className="base-cards-section">
@@ -1273,12 +1502,23 @@ const DouDiZhuGame: React.FC = () => {
                 } ${players[1].isLandlord ? "landlord" : ""}`}
               >
                 <h3 className="player-name">{players[1].name}</h3>
-                <p className="player-cards-count">
-                  剩余: {players[1].cards.length} 张
-                </p>
-                <p className="player-stats">
-                  出牌: {players[1].playCount || 0}
-                </p>
+                {gamePhase !== "init" && (
+                  <>
+                    <p className="player-cards-count">
+                      剩余: {players[1].cards.length} 张
+                    </p>
+                    <p className="player-stats">
+                      出牌: {players[1].playCount || 0}
+                    </p>
+                  </>
+                )}
+                {gamePhase === "end" && players[1].cards.length > 0 && (
+                  <div className="remaining-cards">
+                    {players[1].cards.map((c) =>
+                      renderCard(c, false, false, "mini")
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1286,16 +1526,26 @@ const DouDiZhuGame: React.FC = () => {
             <div className="table-area">
               <h3 className="table-title">
                 当前牌面{" "}
-                <span className="game-stats-inline">
-                  轮次: {Math.floor(totalTurns / 3) + 1}
-                </span>
+                {gamePhase !== "init" && (
+                  <span className="game-stats-inline">
+                    轮次: {Math.floor(totalTurns / 3) + 1}
+                  </span>
+                )}
               </h3>
               {lastPlayedCards.length > 0 ? (
                 <>
                   <p className="table-info">
                     {players[lastPlayerId]?.name} 出的牌
                   </p>
-                  <div className={`table-cards ${lastPlayedCards.length <= 5 ? 'scale-large' : lastPlayedCards.length <= 10 ? 'scale-medium' : 'scale-small'}`}>
+                  <div
+                    className={`table-cards ${
+                      lastPlayedCards.length <= 5
+                        ? "scale-large"
+                        : lastPlayedCards.length <= 10
+                        ? "scale-medium"
+                        : "scale-small"
+                    }`}
+                  >
                     {lastPlayedCards.map((c) =>
                       renderCard(c, false, false, "normal")
                     )}
@@ -1317,26 +1567,56 @@ const DouDiZhuGame: React.FC = () => {
                 } ${players[2].isLandlord ? "landlord" : ""}`}
               >
                 <h3 className="player-name">{players[2].name}</h3>
-                <p className="player-cards-count">
-                  剩余: {players[2].cards.length} 张
-                </p>
-                <p className="player-stats">
-                  出牌: {players[2].playCount || 0}
-                </p>
+                {gamePhase !== "init" && (
+                  <>
+                    <p className="player-cards-count">
+                      剩余: {players[2].cards.length} 张
+                    </p>
+                    <p className="player-stats">
+                      出牌: {players[2].playCount || 0}
+                    </p>
+                  </>
+                )}
+                {gamePhase === "end" && players[2].cards.length > 0 && (
+                  <div className="remaining-cards">
+                    {players[2].cards.map((c) =>
+                      renderCard(c, false, false, "mini")
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {(gamePhase === "playing" || gamePhase === "bidding") && (
+        {(gamePhase === "playing" ||
+          gamePhase === "bidding" ||
+          gamePhase === "end") && (
           <div
             className={`player-hand ${
               players[0].isLandlord ? "landlord" : ""
             } ${currentPlayer === 0 ? "active" : ""}`}
+            style={{ position: "relative" }}
           >
             <div className="hand-header">
+              <div className="hand-controls">
+                <button
+                  className={`btn btn-sort ${sortOrder}`}
+                  onClick={toggleSortOrder}
+                  title={sortOrder === "asc" ? "当前：小 → 大" : "当前：大 → 小"}
+                >
+                  <svg
+                    className="sort-icon"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z" />
+                  </svg>
+                </button>
+              </div>
+
               <h3 className="hand-title">
-                你的手牌 ({players[0].cards.length}张){" "}
+                剩余: {players[0].cards.length} 张{" "}
                 <span className="player-stats-inline">
                   出牌: {players[0].playCount || 0}
                 </span>
@@ -1381,8 +1661,14 @@ const DouDiZhuGame: React.FC = () => {
 
             <div className="hand-cards-scroll-container">
               <div className="hand-cards">
-                {players[0].cards.map((c) =>
-                  renderCard(c, true, selectedCards.includes(c.id), "normal")
+                {players[0].cards.map((c, idx) =>
+                  renderCard(
+                    c,
+                    gamePhase !== "end",
+                    selectedCards.includes(c.id),
+                    "normal",
+                    idx
+                  )
                 )}
               </div>
             </div>

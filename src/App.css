@@ -3,15 +3,63 @@
   /* margin: 0 auto; */
   /* padding: 2rem; */
   text-align: center;
+  width: 100%;
+  height: 100vh;
 }
 
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.home-container-poker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  /* 
+    红: #fee2e2 (red-100)
+    绿: #dcfce7 (green-100)
+    蓝: #dbeafe (blue-100)
+  */
+  background: linear-gradient(135deg, #fee2e2, #dcfce7, #dbeafe);
+  color: #1f2937; /* 灰色 800，深色文字以保证对比度 */
 }
 
-.read-the-docs {
-  color: #888;
+.home-title {
+  font-size: 3rem;
+  margin-bottom: 3rem;
+  background: linear-gradient(to right, #f59e0b, #fbbf24);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: bold;
+}
+
+.game-select {
+  display: flex;
+  gap: 2rem;
+}
+
+.game-btn {
+  padding: 1.5rem 3rem;
+  font-size: 1.5rem;
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: white;
+  font-weight: bold;
+  min-width: 200px;
+}
+
+.game-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+.ddz-btn {
+  background: linear-gradient(135deg, #1a4d2e, #2d6a45);
+  box-shadow: 0 4px 6px rgba(26, 77, 46, 0.4);
+}
+
+.gd-btn {
+  background: linear-gradient(135deg, #4a0404, #7f1d1d);
+  box-shadow: 0 4px 6px rgba(74, 4, 4, 0.4);
 }
