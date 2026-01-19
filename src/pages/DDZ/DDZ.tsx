@@ -2,12 +2,17 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./DDZ.less";
 
-// --- 基础接口与常量 ---
+// 基础接口与常量
 interface Card {
   suit: string;
   rank: string;
   id: string;
   value: number;
+}
+interface CardType {
+  type: string;
+  value: number;
+  count: number;
 }
 interface Player {
   id: number;
@@ -15,11 +20,6 @@ interface Player {
   cards: Card[];
   isLandlord: boolean;
   playCount: number;
-}
-interface CardType {
-  type: string;
-  value: number;
-  count: number;
 }
 
 const suits = ["♠", "♥", "♣", "♦"];
@@ -56,7 +56,7 @@ const rankValues: { [key: string]: number } = {
   JOKER: 17,
 };
 
-// --- 工具函数 ---
+// 工具函数
 const createDeck = (): Card[] => {
   const deck: Card[] = [];
   suits.forEach((suit) =>
@@ -80,33 +80,42 @@ const shuffleDeck = (deck: Card[]): Card[] => {
   return newDeck;
 };
 
-// --- 牌型校验逻辑 ---
+// 牌型校验
 const getDDZType = (cards: Card[]): CardType | null => {
   if (cards.length === 0) return null;
   const sorted = [...cards].sort((a, b) => a.value - b.value);
   const values = sorted.map((c) => c.value);
   const len = cards.length;
-
-  if (len === 2 && values[0] === 16 && values[1] === 17)
+  
+  //王炸
+  if (len === 2 && values[0] === 16 && values[1] === 17) 
     return { type: "rocket", value: 100, count: 2 };
 
   const counts: { [key: number]: number } = {};
+  console.log(counts);
+  
   values.forEach((v) => (counts[v] = (counts[v] || 0) + 1));
   const freq = Object.entries(counts)
     .map(([v, c]) => ({ val: Number(v), count: c }))
     .sort((a, b) => b.count - a.count || b.val - a.val);
 
+  // 炸弹
   if (len === 4 && freq[0].count === 4)
     return { type: "bomb", value: freq[0].val, count: 4 };
+  //单张
   if (len === 1) return { type: "single", value: values[0], count: 1 };
+  // 对子
   if (len === 2 && values[0] === values[1])
     return { type: "pair", value: values[0], count: 2 };
+  // 三张
   if (len === 3 && freq[0].count === 3)
     return { type: "triple", value: freq[0].val, count: 3 };
 
   if (freq[0].count === 3) {
+    // 三带一
     if (len === 4)
       return { type: "triple_single", value: freq[0].val, count: 4 };
+    // 三带二    
     if (len === 5 && freq[1]?.count === 2)
       return { type: "triple_pair", value: freq[0].val, count: 5 };
   }
@@ -117,7 +126,7 @@ const getDDZType = (cards: Card[]): CardType | null => {
       return { type: "straight", value: values[len - 1], count: len };
   }
 
-  // 连对 (姐妹对)
+  // 连对
   if (
     len >= 4 &&
     len % 2 === 0 &&
@@ -137,7 +146,7 @@ const getDDZType = (cards: Card[]): CardType | null => {
     }
   }
 
-  // 飞机系列
+  // 飞机
   const trios = freq
     .filter((f) => f.count >= 3)
     .map((f) => f.val)
@@ -210,6 +219,7 @@ const canBeat = (playedCards: Card[], lastCards: Card[]): boolean => {
   );
 };
 
+// AI叫地主逻辑
 const evaluateLandlordHand = (hand: Card[]): number => {
   const counts: { [key: number]: number } = {};
   hand.forEach((c) => {
@@ -254,7 +264,7 @@ const evaluateLandlordHand = (hand: Card[]): number => {
   return score;
 };
 
-// --- AI 核心搜索逻辑 ---
+// AI 出牌逻辑
 const findSmartAICards = (
   hand: Card[],
   lastCards: Card[],
@@ -445,7 +455,7 @@ const findSmartAICards = (
     return null;
   };
 
-  // --- 决策逻辑 ---
+  //  决策逻辑 
 
   // 1. 如果是跟牌 (有 lastType)
   if (lastType) {
@@ -662,7 +672,7 @@ const findSmartAICards = (
 
 const DouDiZhu: React.FC = () => {
   const navigate = useNavigate();
-  // --- 原有状态保持不变 ---
+  // 原有状态保持不变 
   const [players, setPlayers] = useState<Player[]>([
     { id: 0, name: "玩家1 (你)", cards: [], isLandlord: false, playCount: 0 },
     { id: 1, name: "玩家2", cards: [], isLandlord: false, playCount: 0 },
@@ -691,11 +701,11 @@ const DouDiZhu: React.FC = () => {
   const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
   const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
 
-  // 用于节流的 ref
+  // 节流Refs
   const dragEndIndexRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  // --- 游戏流程 ---
+  // 游戏流程 
   const startGame = () => {
     const deck = shuffleDeck(createDeck());
     const newPlayers: Player[] = [
@@ -760,7 +770,7 @@ const DouDiZhu: React.FC = () => {
     }
   };
 
-  // --- 切换排序 ---
+  // 切换手牌牌序
   const toggleSortOrder = () => {
     const newOrder = sortOrder === "asc" ? "desc" : "asc";
     setSortOrder(newOrder);
@@ -779,7 +789,7 @@ const DouDiZhu: React.FC = () => {
     setPlayers(newPlayers);
   };
 
-  // --- 核心动作封装 ---
+  // 核心动作封装 
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
     // const type = getDDZType(cardsToPlay);
     const newPlayers = [...players];
@@ -835,7 +845,7 @@ const DouDiZhu: React.FC = () => {
     handlePlay(0, selected);
   };
 
-  // --- AI 监听器 ---
+  //  AI 监听
   useEffect(() => {
     if (gamePhase === "bidding" && currentPlayer !== 0) {
       const timer = setTimeout(() => {
@@ -916,7 +926,7 @@ const DouDiZhu: React.FC = () => {
     selectedCards,
   ]);
 
-  // --- UI 渲染函数 (保持原有 HTML 结构) ---
+  // 卡牌渲染
   const renderCard = (
     card: Card,
     isSelectable = false,
@@ -1621,7 +1631,7 @@ const DouDiZhu: React.FC = () => {
               </div>
 
               <h3 className="hand-title">
-                剩余: {players[0].cards.length} 张{" "}
+                剩余: {players[0].cards.length} 张
                 <span className="player-stats-inline">
                   出牌: {players[0].playCount || 0}
                 </span>
