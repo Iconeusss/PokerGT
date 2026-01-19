@@ -193,6 +193,14 @@ body,
           border-bottom: none;
         }
 
+        &.align-top {
+          align-items: flex-start;
+
+          .rule-label {
+            margin-top: 0.3rem;
+          }
+        }
+
         .rule-label {
           font-weight: bold;
           min-width: 5rem;
@@ -205,6 +213,27 @@ body,
           gap: 0.25rem;
           flex-wrap: wrap;
           align-items: center;
+
+          &.column-layout {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+
+          .card-row {
+            display: flex;
+            gap: 0.25rem;
+          }
+
+          .rule-hint {
+            font-size: 0.85rem;
+            color: #ccc;
+          }
+
+          .rule-desc {
+            text-align: left;
+            width: 100%;
+          }
         }
       }
     }
@@ -230,7 +259,7 @@ body,
 // 消息框 (Toast 风格)
 .message-box {
   position: fixed;
-  top: 23%;
+  top: 18%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
@@ -535,6 +564,15 @@ body,
   }
 }
 
+.top-player {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(260px, 90%);
+  z-index: 10;
+}
+
 // 玩家信息卡片 (头像样式)
 .player-info {
   background: rgba(0, 0, 0, 0.6);
@@ -547,6 +585,12 @@ body,
   border: 2px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(4px);
   position: relative;
+
+  &.winner {
+    border-color: #facc15;
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.9);
+    animation: winner-pulse 1.2s ease-in-out infinite;
+  }
 
   &.landlord {
     border-color: #ef4444 !important; // 红色边框
@@ -868,6 +912,68 @@ body,
     margin-bottom: 0.5rem;
     flex-wrap: wrap;
 
+    .hand-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      button {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        border-radius: 0.75rem;
+        padding: 0.35rem 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.18s ease, background 0.18s ease,
+          border-color 0.18s ease, box-shadow 0.18s ease;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.45);
+          border-color: rgba(255, 255, 255, 0.22);
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.12);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+      }
+
+      .btn-sort-mode {
+        width: 3.4rem;
+        height: 2.4rem;
+        padding: 0 1.2rem;
+        border-radius: 1rem !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sort-direction-toggle {
+        width: 2.4rem;
+        height: 2.4rem;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sort-arrow {
+        display: inline-block;
+        font-size: 1.15rem;
+        transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.2, 1);
+        will-change: transform;
+      }
+
+      .sort-direction-toggle.is-default .sort-arrow {
+        transform: rotate(180deg);
+      }
+
+      .sort-direction-toggle.is-reversed .sort-arrow {
+        transform: rotate(0deg);
+      }
+    }
+
     .hand-title {
       font-size: 1.2rem;
       font-weight: bold;
@@ -929,16 +1035,30 @@ body,
     width: max-content;
     min-width: 100%;
 
-    .card {
+    .card-motion {
+      display: inline-flex;
       margin: 0;
       margin-left: -2.5rem; // 调整负边距，确保内容可见
-      box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 加深阴影
-      transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
-        margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+      will-change: transform;
 
       &:first-child {
         margin-left: 0;
       }
+
+      @media (max-width: 768px) {
+        margin-left: -1.8rem;
+      }
+
+      @media (max-width: 500px) {
+        margin-left: -1.8rem;
+      }
+    }
+
+    .card {
+      margin: 0;
+      box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 加深阴影
+      transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
+        margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
 
       // 悬停效果 (仅在支持悬停的设备上启用)
       @media (hover: hover) {
@@ -965,12 +1085,12 @@ body,
 
       // 响应式：仅调整边距
       @media (max-width: 768px) {
-        margin-left: -1.8rem;
+        margin-left: 0;
       }
 
       // 超小屏幕适配
       @media (max-width: 500px) {
-        margin-left: -1.8rem; // 保持重叠度
+        margin-left: 0; // 保持重叠度
 
         // 移动端禁用 hover 效果
         &:hover {
@@ -987,6 +1107,21 @@ body,
         }
       }
     }
+  }
+}
+
+@keyframes winner-pulse {
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 0 22px rgba(250, 204, 21, 1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
   }
 }
 

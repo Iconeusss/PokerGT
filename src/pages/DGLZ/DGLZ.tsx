@@ -88,7 +88,7 @@ const DaGuaiLuZi: React.FC = () => {
   useEffect(() => {
     const deck = shuffleDeck(createDeck());
     // 简单模拟发牌
-    setMyCards(deck.slice(0, 17).sort((a, b) => a.value - b.value));
+    setMyCards(deck.slice(0, 26).sort((a, b) => a.value - b.value));
   }, []);
 
   // --- 全局事件监听 (处理滑动结束) ---

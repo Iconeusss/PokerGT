@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./DDZ.less";
 
@@ -694,6 +694,7 @@ const DouDiZhu: React.FC = () => {
   const [totalTurns, setTotalTurns] = useState(0);
 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const myCards = players[0].cards;
 
   // 滑动选牌相关状态
   const [isDragging, setIsDragging] = useState(false);
@@ -704,6 +705,20 @@ const DouDiZhu: React.FC = () => {
   // 节流Refs
   const dragEndIndexRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
+  const sortFlipFromRectsRef = useRef<Record<string, DOMRect>>({});
+  const sortFlipPendingRef = useRef(false);
+  const cardMotionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const captureSortFlipRects = () => {
+    const rects: Record<string, DOMRect> = {};
+    for (const c of myCards) {
+      const el = cardMotionRefs.current[c.id];
+      if (!el) continue;
+      rects[c.id] = el.getBoundingClientRect();
+    }
+    sortFlipFromRectsRef.current = rects;
+    sortFlipPendingRef.current = true;
+  };
 
   // 游戏流程 
   const startGame = () => {
@@ -772,6 +787,7 @@ const DouDiZhu: React.FC = () => {
 
   // 切换手牌牌序
   const toggleSortOrder = () => {
+    captureSortFlipRects();
     const newOrder = sortOrder === "asc" ? "desc" : "asc";
     setSortOrder(newOrder);
 
@@ -785,9 +801,38 @@ const DouDiZhu: React.FC = () => {
       myCards.sort((a, b) => b.value - a.value);
     }
     
-    newPlayers[0].cards = myCards;
+    newPlayers[0] = { ...newPlayers[0], cards: myCards };
     setPlayers(newPlayers);
   };
+
+  useLayoutEffect(() => {
+    if (!sortFlipPendingRef.current) return;
+    const fromRects = sortFlipFromRectsRef.current;
+    sortFlipPendingRef.current = false;
+
+    for (const c of myCards) {
+      const el = cardMotionRefs.current[c.id];
+      const fromRect = fromRects[c.id];
+      if (!el || !fromRect) continue;
+      const toRect = el.getBoundingClientRect();
+      const dx = fromRect.left - toRect.left;
+      const dy = fromRect.top - toRect.top;
+      if (dx === 0 && dy === 0) continue;
+
+      el.getAnimations().forEach((a) => a.cancel());
+      el.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(0.98)` },
+          { transform: "translate(0px, 0px) scale(1)" },
+        ],
+        {
+          duration: 260,
+          easing: "cubic-bezier(0.2, 0.9, 0.2, 1)",
+          fill: "both",
+        }
+      );
+    }
+  }, [myCards]);
 
   // 核心动作封装 
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
@@ -892,7 +937,6 @@ const DouDiZhu: React.FC = () => {
 
         // 应用选中状态
         const newSelected = new Set(selectedCards);
-        const myCards = players[0].cards;
 
         for (let i = min; i <= max; i++) {
           if (i >= 0 && i < myCards.length) {
@@ -1616,17 +1660,13 @@ const DouDiZhu: React.FC = () => {
             <div className="hand-header">
               <div className="hand-controls">
                 <button
-                  className={`btn btn-sort ${sortOrder}`}
+                  className={`btn btn-sort sort-direction-toggle ${
+                    sortOrder === "desc" ? "is-default" : "is-reversed"
+                  }`}
                   onClick={toggleSortOrder}
                   title={sortOrder === "asc" ? "当前：小 → 大" : "当前：大 → 小"}
                 >
-                  <svg
-                    className="sort-icon"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z" />
-                  </svg>
+                  <span className="sort-arrow">➜</span>
                 </button>
               </div>
 
@@ -1676,15 +1716,23 @@ const DouDiZhu: React.FC = () => {
 
             <div className="hand-cards-scroll-container">
               <div className="hand-cards">
-                {players[0].cards.map((c, idx) =>
-                  renderCard(
-                    c,
-                    gamePhase !== "end",
-                    selectedCards.includes(c.id),
-                    "normal",
-                    idx
-                  )
-                )}
+                {myCards.map((card, idx) => (
+                  <div
+                    key={card.id}
+                    className="card-motion"
+                    ref={(el) => {
+                      cardMotionRefs.current[card.id] = el;
+                    }}
+                  >
+                    {renderCard(
+                      card,
+                      gamePhase !== "end",
+                      selectedCards.includes(card.id),
+                      "normal",
+                      idx
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
