@@ -70,6 +70,17 @@ const shuffleDeck = (deck: Card[]): Card[] => {
 
 const DaGuaiLuZi: React.FC = () => {
   const navigate = useNavigate();
+
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 500);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth < 500);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // --- 状态管理 ---
   const [myCards, setMyCards] = useState<Card[]>([]);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -90,6 +101,31 @@ const DaGuaiLuZi: React.FC = () => {
     // 简单模拟发牌
     setMyCards(deck.slice(0, 26).sort((a, b) => a.value - b.value));
   }, []);
+
+  // 处理触摸滑动
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || dragStartIndex === null) return;
+    
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cardElement = target?.closest('.card');
+    
+    if (cardElement) {
+      const indexStr = cardElement.getAttribute('data-index');
+      if (indexStr) {
+        const index = parseInt(indexStr, 10);
+        
+        // 使用 requestAnimationFrame 进行节流
+        dragEndIndexRef.current = index;
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            setDragEndIndex(dragEndIndexRef.current);
+            rafRef.current = null;
+          });
+        }
+      }
+    }
+  };
 
   // --- 全局事件监听 (处理滑动结束) ---
   useEffect(() => {
@@ -201,6 +237,7 @@ const DaGuaiLuZi: React.FC = () => {
           isSelectable ? "selectable" : ""
         }`}
         style={{ touchAction: "none" }} // 防止触摸滚动
+        data-index={index}
       >
         {isJoker ? (
           <>
@@ -249,10 +286,33 @@ const DaGuaiLuZi: React.FC = () => {
             <div className="hand-header">
                 <h3 className="hand-title">你的手牌 ({myCards.length}张)</h3>
             </div>
-            <div className="hand-cards">
-                {myCards.map((card, index) =>
+            <div className="hand-cards-scroll-container" onTouchMove={handleTouchMove}>
+              {isSmallScreen && myCards.length >= 10 ? (
+                <>
+                  <div className="hand-cards">
+                    {myCards.slice(0, Math.ceil(myCards.length / 2)).map((card, index) =>
+                      renderCard(card, true, selectedCards.includes(card.id), "normal", index)
+                    )}
+                  </div>
+                  <div className="hand-cards" style={{ marginTop: "-2rem" }}>
+                    {myCards.slice(Math.ceil(myCards.length / 2)).map((card, index) =>
+                      renderCard(
+                        card,
+                        true,
+                        selectedCards.includes(card.id),
+                        "normal",
+                        index + Math.ceil(myCards.length / 2)
+                      )
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="hand-cards">
+                  {myCards.map((card, index) =>
                     renderCard(card, true, selectedCards.includes(card.id), "normal", index)
-                )}
+                  )}
+                </div>
+              )}
             </div>
         </div>
     </div>

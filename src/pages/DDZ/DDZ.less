@@ -230,7 +230,7 @@ body,
 // 消息框 (Toast 风格)
 .message-box {
   position: fixed;
-  top: 18%;
+  top: 64%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
@@ -246,7 +246,7 @@ body,
   min-width: 200px;
 
   .message-text {
-    font-size: 1.25rem;
+    font-size: clamp(1rem, 3vw, 2rem);
     font-weight: 600;
     color: #fff;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -326,6 +326,23 @@ body,
 
     &:hover:not(:disabled) {
       filter: brightness(1.1);
+    }
+  }
+
+  &.btn-purple {
+    background: linear-gradient(to bottom, #a855f7, #9333ea);
+    // border: 1px solid #7e22ce;
+    color: white;
+    box-shadow: 0 4px 0 #6b21a8;
+
+    &:hover {
+      background: linear-gradient(to bottom, #b96bf9, #a855f7);
+      transform: translateY(-2px);
+    }
+
+    &:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #6b21a8;
     }
   }
 
@@ -713,7 +730,7 @@ body,
     .game-stats-inline {
       margin-left: 0.8rem;
       font-size: 0.85em;
-      color: #fbbf24;
+      color: #ffdc84;
       background: rgba(0, 0, 0, 0.4);
       padding: 0.2rem 0.6rem;
       border-radius: 0.5rem;
@@ -1025,14 +1042,23 @@ body,
       // 超小屏幕适配
       @media (max-width: 500px) {
         margin-left: -1.8rem; // 保持重叠度
+
+        &:first-child {
+          margin-left: 0;
+        }
       }
     }
 
     .card {
       margin: 0;
       box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 加深阴影
-      transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
-        margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+      transition:
+        transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
+        margin 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s ease;
+
+      // 定义选中状态位移变量
+      --selected-offset: -1.5rem;
 
       // 悬停效果 (仅在支持悬停的设备上启用)
       @media (hover: hover) {
@@ -1044,7 +1070,7 @@ body,
 
       // 选中状态
       &.selected {
-        transform: translateY(-1.5rem);
+        transform: translateY(var(--selected-offset));
         box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 金色光晕
         border-color: #fbbf24;
       }
@@ -1052,22 +1078,29 @@ body,
       // 选中且悬停 (仅在支持悬停的设备上启用)
       @media (hover: hover) {
         &.selected:hover {
-          transform: translateY(-1.5rem);
+          transform: translateY(var(--selected-offset));
         }
       }
 
       @media (max-width: 500px) {
-        // 移动端禁用 hover 效果
-        &:hover {
-          transform: none;
-        }
+        --selected-offset: -0.8rem; // 调整移动端选中位移
 
         &.selected {
-          transform: translateY(-0.8rem);
+          // transform 由变量控制
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 保持选中光晕
+        }
+      }
 
-          &:hover {
-            transform: translateY(-0.8rem);
-          }
+      // 触摸设备适配 (禁用悬停)
+      @media (hover: none), (pointer: coarse) {
+        &:hover {
+          transform: translateY(0); // 明确设置为 0
+          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 恢复默认阴影
+        }
+
+        &.selected:hover {
+          transform: translateY(var(--selected-offset)); // 保持选中状态位移
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 保持选中光晕
         }
       }
     }
@@ -1381,7 +1414,7 @@ body,
 
     .hand-header {
       margin-bottom: 0.5rem;
-      
+
       .hand-title {
         font-size: 0.6rem;
         padding: 0 2.5rem; // 防止标题被两侧按钮遮挡
@@ -1390,9 +1423,9 @@ body,
       }
 
       .hand-controls {
-        left: 0; 
+        left: 0;
         // top: 0.5rem;
-        
+
         .btn-sort {
           width: 2.2rem;
           height: 2.2rem;

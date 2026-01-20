@@ -92,7 +92,7 @@ const getDDZType = (cards: Card[]): CardType | null => {
     return { type: "rocket", value: 100, count: 2 };
 
   const counts: { [key: number]: number } = {};
-  console.log(counts);
+  // console.log(counts);
   
   values.forEach((v) => (counts[v] = (counts[v] || 0) + 1));
   const freq = Object.entries(counts)
@@ -672,6 +672,17 @@ const findSmartAICards = (
 
 const DouDiZhu: React.FC = () => {
   const navigate = useNavigate();
+
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 500);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth < 500);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // 原有状态保持不变 
   const [players, setPlayers] = useState<Player[]>([
     { id: 0, name: "玩家1 (你)", cards: [], isLandlord: false, playCount: 0 },
@@ -921,6 +932,31 @@ const DouDiZhu: React.FC = () => {
     }
   }, [gamePhase, currentPlayer, lastPlayedCards]);
 
+  // 处理触摸滑动
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || dragStartIndex === null) return;
+    
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cardElement = target?.closest('.card');
+    
+    if (cardElement) {
+      const indexStr = cardElement.getAttribute('data-index');
+      if (indexStr) {
+        const index = parseInt(indexStr, 10);
+        
+        // 使用 requestAnimationFrame 进行节流
+        dragEndIndexRef.current = index;
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            setDragEndIndex(dragEndIndexRef.current);
+            rafRef.current = null;
+          });
+        }
+      }
+    }
+  };
+
   // 全局 pointerup 监听，用于结束滑动
   useEffect(() => {
     const handleGlobalPointerUp = () => {
@@ -1031,6 +1067,7 @@ const DouDiZhu: React.FC = () => {
           isSelectable ? "selectable" : ""
         }`}
         style={{ touchAction: "none" }} // 防止触摸滚动
+        data-index={index}
       >
         {isJoker ? (
           <>
@@ -1714,26 +1751,69 @@ const DouDiZhu: React.FC = () => {
               )}
             </div>
 
-            <div className="hand-cards-scroll-container">
-              <div className="hand-cards">
-                {myCards.map((card, idx) => (
-                  <div
-                    key={card.id}
-                    className="card-motion"
-                    ref={(el) => {
-                      cardMotionRefs.current[card.id] = el;
-                    }}
-                  >
-                    {renderCard(
-                      card,
-                      gamePhase !== "end",
-                      selectedCards.includes(card.id),
-                      "normal",
-                      idx
-                    )}
+            <div className="hand-cards-scroll-container" onTouchMove={handleTouchMove}>
+              {isSmallScreen && myCards.length >= 10 ? (
+                <>
+                  <div className="hand-cards">
+                    {myCards.slice(0, Math.ceil(myCards.length / 2)).map((card, idx) => (
+                      <div
+                        key={card.id}
+                        className="card-motion"
+                        ref={(el) => {
+                          cardMotionRefs.current[card.id] = el;
+                        }}
+                      >
+                        {renderCard(
+                          card,
+                          gamePhase !== "end",
+                          selectedCards.includes(card.id),
+                          "normal",
+                          idx
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <div className="hand-cards" style={{ marginTop: "-2rem" }}>
+                    {myCards.slice(Math.ceil(myCards.length / 2)).map((card, idx) => (
+                      <div
+                        key={card.id}
+                        className="card-motion"
+                        ref={(el) => {
+                          cardMotionRefs.current[card.id] = el;
+                        }}
+                      >
+                        {renderCard(
+                          card,
+                          gamePhase !== "end",
+                          selectedCards.includes(card.id),
+                          "normal",
+                          idx + Math.ceil(myCards.length / 2)
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="hand-cards">
+                  {myCards.map((card, idx) => (
+                    <div
+                      key={card.id}
+                      className="card-motion"
+                      ref={(el) => {
+                        cardMotionRefs.current[card.id] = el;
+                      }}
+                    >
+                      {renderCard(
+                        card,
+                        gamePhase !== "end",
+                        selectedCards.includes(card.id),
+                        "normal",
+                        idx
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
