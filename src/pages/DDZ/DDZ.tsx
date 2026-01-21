@@ -62,11 +62,11 @@ const createDeck = (): Card[] => {
   suits.forEach((suit) =>
     ranks.forEach((rank) => {
       deck.push({ suit, rank, id: `${suit}${rank}`, value: rankValues[rank] });
-    })
+    }),
   );
   deck.push(
     { suit: "🃟", rank: "joker", id: "joker", value: 16 },
-    { suit: "🂿", rank: "JOKER", id: "JOKER", value: 17 }
+    { suit: "🂿", rank: "JOKER", id: "JOKER", value: 17 },
   );
   return deck;
 };
@@ -86,14 +86,14 @@ const getDDZType = (cards: Card[]): CardType | null => {
   const sorted = [...cards].sort((a, b) => a.value - b.value);
   const values = sorted.map((c) => c.value);
   const len = cards.length;
-  
+
   //王炸
-  if (len === 2 && values[0] === 16 && values[1] === 17) 
+  if (len === 2 && values[0] === 16 && values[1] === 17)
     return { type: "rocket", value: 100, count: 2 };
 
   const counts: { [key: number]: number } = {};
   // console.log(counts);
-  
+
   values.forEach((v) => (counts[v] = (counts[v] || 0) + 1));
   const freq = Object.entries(counts)
     .map(([v, c]) => ({ val: Number(v), count: c }))
@@ -115,7 +115,7 @@ const getDDZType = (cards: Card[]): CardType | null => {
     // 三带一
     if (len === 4)
       return { type: "triple_single", value: freq[0].val, count: 4 };
-    // 三带二    
+    // 三带二
     if (len === 5 && freq[1]?.count === 2)
       return { type: "triple_pair", value: freq[0].val, count: 5 };
   }
@@ -187,7 +187,7 @@ const getDDZType = (cards: Card[]): CardType | null => {
           }
           const remCounts: { [key: number]: number } = {};
           remainingValues.forEach(
-            (v) => (remCounts[v] = (remCounts[v] || 0) + 1)
+            (v) => (remCounts[v] = (remCounts[v] || 0) + 1),
           );
           const allPairs = Object.values(remCounts).every((c) => c % 2 === 0);
           if (allPairs) {
@@ -265,11 +265,11 @@ const evaluateLandlordHand = (hand: Card[]): number => {
 };
 
 // AI 出牌逻辑
-const findSmartAICards = (
+const playsByAI = (
   hand: Card[],
   lastCards: Card[],
   players: Player[],
-  myIndex: number
+  myIndex: number,
 ): Card[] | null => {
   const lastType = lastCards.length > 0 ? getDDZType(lastCards) : null;
   const opponentCount = players[0].cards.length; // 兼容旧逻辑变量名
@@ -289,7 +289,7 @@ const findSmartAICards = (
   const findHigher = (
     minVal: number,
     count: number,
-    excludeVals: number[] = []
+    excludeVals: number[] = [],
   ): Card[] | null => {
     for (const v of distinctValues) {
       if (
@@ -347,7 +347,7 @@ const findSmartAICards = (
   // 辅助函数：查找连对
   const findConsecutivePairs = (
     minVal: number,
-    length: number
+    length: number,
   ): Card[] | null => {
     const pairCount = length / 2;
     for (let i = 0; i < distinctValues.length; i++) {
@@ -374,7 +374,7 @@ const findSmartAICards = (
   const findPlane = (
     minVal: number,
     length: number,
-    subType: "plane" | "plane_with_singles" | "plane_with_pairs"
+    subType: "plane" | "plane_with_singles" | "plane_with_pairs",
   ): Card[] | null => {
     let numTrios = 0;
     if (subType === "plane") numTrios = length / 3;
@@ -437,7 +437,7 @@ const findSmartAICards = (
   // 查找炸弹
   const findBomb = (minVal: number): Card[] | null => {
     const bombVal = distinctValues.find(
-      (v) => v > minVal && analysis[v].length === 4
+      (v) => v > minVal && analysis[v].length === 4,
     );
     return bombVal ? analysis[bombVal] : null;
   };
@@ -455,7 +455,7 @@ const findSmartAICards = (
     return null;
   };
 
-  //  决策逻辑 
+  //  决策逻辑
 
   // 1. 如果是跟牌 (有 lastType)
   if (lastType) {
@@ -510,7 +510,7 @@ const findSmartAICards = (
         result = findPlane(
           lastType.value,
           lastType.count,
-          lastType.type as any
+          lastType.type as any,
         );
         break;
       case "bomb":
@@ -540,7 +540,7 @@ const findSmartAICards = (
   const me = players[myIndex];
   // 敌对阵营：如果我是地主，对手是农民；如果我是农民，对手是地主
   const opponents = players.filter(
-    (p) => p.id !== me.id && p.isLandlord !== me.isLandlord
+    (p) => p.id !== me.id && p.isLandlord !== me.isLandlord,
   );
   // 只要有任意对手手牌少于 5 张，就开启防守模式
   const isEndgameDefense = opponents.some((p) => p.cards.length < 5);
@@ -549,9 +549,7 @@ const findSmartAICards = (
 
   // 试探飞机 / 三带（早期尽量不用特别大的三张开局）
   const trios = distinctValues.filter((v) => analysis[v].length === 3);
-  const hasSafeTrios =
-    trios.length > 0 &&
-    (!isEarlyGame || trios[0] <= 11);
+  const hasSafeTrios = trios.length > 0 && (!isEarlyGame || trios[0] <= 11);
   if (hasSafeTrios) {
     let planeStart = -1;
     let planeLen = 0;
@@ -572,13 +570,13 @@ const findSmartAICards = (
       const plane = findPlane(
         planeStart - 1,
         planeLen * 4,
-        "plane_with_singles"
+        "plane_with_singles",
       );
       if (plane) return plane;
       const planeP = findPlane(
         planeStart - 1,
         planeLen * 5,
-        "plane_with_pairs"
+        "plane_with_pairs",
       );
       if (planeP) return planeP;
       const planePure = findPlane(planeStart - 1, planeLen * 3, "plane");
@@ -683,7 +681,7 @@ const DouDiZhu: React.FC = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 原有状态保持不变 
+  // 原有状态保持不变
   const [players, setPlayers] = useState<Player[]>([
     { id: 0, name: "玩家1 (你)", cards: [], isLandlord: false, playCount: 0 },
     { id: 1, name: "玩家2", cards: [], isLandlord: false, playCount: 0 },
@@ -731,7 +729,7 @@ const DouDiZhu: React.FC = () => {
     sortFlipPendingRef.current = true;
   };
 
-  // 游戏流程 
+  // 游戏流程
   const startGame = () => {
     const deck = shuffleDeck(createDeck());
     const newPlayers: Player[] = [
@@ -779,7 +777,9 @@ const DouDiZhu: React.FC = () => {
       newPlayers[currentPlayer].cards = [
         ...newPlayers[currentPlayer].cards,
         ...baseCards,
-      ].sort((a, b) => (sortOrder === "asc" ? a.value - b.value : b.value - a.value));
+      ].sort((a, b) =>
+        sortOrder === "asc" ? a.value - b.value : b.value - a.value,
+      );
       setPlayers(newPlayers);
       setLandlordId(currentPlayer);
       setGamePhase("playing");
@@ -805,13 +805,13 @@ const DouDiZhu: React.FC = () => {
     // 重新排序当前玩家的手牌
     const newPlayers = [...players];
     const myCards = [...newPlayers[0].cards];
-    
+
     if (newOrder === "asc") {
       myCards.sort((a, b) => a.value - b.value);
     } else {
       myCards.sort((a, b) => b.value - a.value);
     }
-    
+
     newPlayers[0] = { ...newPlayers[0], cards: myCards };
     setPlayers(newPlayers);
   };
@@ -840,17 +840,17 @@ const DouDiZhu: React.FC = () => {
           duration: 260,
           easing: "cubic-bezier(0.2, 0.9, 0.2, 1)",
           fill: "both",
-        }
+        },
       );
     }
   }, [myCards]);
 
-  // 核心动作封装 
+  // 核心动作封装
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
     // const type = getDDZType(cardsToPlay);
     const newPlayers = [...players];
     newPlayers[playerId].cards = newPlayers[playerId].cards.filter(
-      (card) => !cardsToPlay.find((c) => c.id === card.id)
+      (card) => !cardsToPlay.find((c) => c.id === card.id),
     );
     newPlayers[playerId].playCount = (newPlayers[playerId].playCount || 0) + 1;
 
@@ -863,7 +863,7 @@ const DouDiZhu: React.FC = () => {
 
     if (newPlayers[playerId].cards.length === 0) {
       setMessage(
-        `🎉 ${newPlayers[playerId].isLandlord ? "地主" : "农民"}获胜！`
+        `🎉 ${newPlayers[playerId].isLandlord ? "地主" : "农民"}获胜！`,
       );
       setGamePhase("end");
       return;
@@ -872,7 +872,7 @@ const DouDiZhu: React.FC = () => {
     const nextPlayer = (playerId + 1) % 3;
     setCurrentPlayer(nextPlayer);
     setMessage(
-      `${players[playerId].name} 出牌，轮到${players[nextPlayer].name}`
+      `${players[playerId].name} 出牌，轮到${players[nextPlayer].name}`,
     );
   };
 
@@ -894,7 +894,7 @@ const DouDiZhu: React.FC = () => {
   // 玩家手动出牌
   const playCards = () => {
     const selected = players[0].cards.filter((card) =>
-      selectedCards.includes(card.id)
+      selectedCards.includes(card.id),
     );
     if (!getDDZType(selected)) return setMessage("无效牌型");
     if (!canBeat(selected, lastPlayedCards)) return setMessage("压不过上家");
@@ -919,11 +919,11 @@ const DouDiZhu: React.FC = () => {
     }
     if (gamePhase === "playing" && currentPlayer !== 0) {
       const timer = setTimeout(() => {
-        const aiCards = findSmartAICards(
+        const aiCards = playsByAI(
           players[currentPlayer].cards,
           lastPlayedCards,
           players,
-          currentPlayer
+          currentPlayer,
         );
         if (aiCards) handlePlay(currentPlayer, aiCards);
         else handlePass(currentPlayer);
@@ -935,16 +935,16 @@ const DouDiZhu: React.FC = () => {
   // 处理触摸滑动
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || dragStartIndex === null) return;
-    
+
     const touch = e.touches[0];
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    const cardElement = target?.closest('.card');
-    
+    const cardElement = target?.closest(".card");
+
     if (cardElement) {
-      const indexStr = cardElement.getAttribute('data-index');
+      const indexStr = cardElement.getAttribute("data-index");
       if (indexStr) {
         const index = parseInt(indexStr, 10);
-        
+
         // 使用 requestAnimationFrame 进行节流
         dragEndIndexRef.current = index;
         if (rafRef.current === null) {
@@ -1012,7 +1012,7 @@ const DouDiZhu: React.FC = () => {
     isSelectable = false,
     isSelected = false,
     size = "normal",
-    index: number = -1
+    index: number = -1,
   ) => {
     const isRed =
       card.suit === "♥" || card.suit === "♦" || card.rank === "JOKER";
@@ -1060,7 +1060,6 @@ const DouDiZhu: React.FC = () => {
             }
           }
         }}
-        
         className={`card ${size} ${isJoker ? "joker-card" : ""} ${
           isRed ? "red" : "black"
         } ${displaySelected ? "selected" : ""} ${
@@ -1131,7 +1130,7 @@ const DouDiZhu: React.FC = () => {
                       { id: "-1", rank: "A", suit: "♠", value: 14 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1142,13 +1141,13 @@ const DouDiZhu: React.FC = () => {
                       { id: "-2", rank: "8", suit: "♠", value: 8 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-3", rank: "8", suit: "♥", value: 8 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1159,19 +1158,19 @@ const DouDiZhu: React.FC = () => {
                       { id: "-4", rank: "K", suit: "♠", value: 13 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-5", rank: "K", suit: "♥", value: 13 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-6", rank: "K", suit: "♣", value: 13 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1182,25 +1181,25 @@ const DouDiZhu: React.FC = () => {
                       { id: "-7", rank: "9", suit: "♠", value: 9 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-8", rank: "9", suit: "♥", value: 9 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-9", rank: "9", suit: "♣", value: 9 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-10", rank: "5", suit: "♦", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1211,31 +1210,31 @@ const DouDiZhu: React.FC = () => {
                       { id: "-40", rank: "Q", suit: "♠", value: 12 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-41", rank: "Q", suit: "♥", value: 12 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-42", rank: "Q", suit: "♣", value: 12 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-43", rank: "4", suit: "♦", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-44", rank: "4", suit: "♣", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1246,31 +1245,31 @@ const DouDiZhu: React.FC = () => {
                       { id: "-11", rank: "3", suit: "♠", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-12", rank: "4", suit: "♥", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-13", rank: "5", suit: "♣", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-14", rank: "6", suit: "♦", value: 6 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-15", rank: "7", suit: "♠", value: 7 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1281,37 +1280,37 @@ const DouDiZhu: React.FC = () => {
                       { id: "-16", rank: "3", suit: "♠", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-17", rank: "3", suit: "♥", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-18", rank: "4", suit: "♣", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-19", rank: "4", suit: "♦", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-20", rank: "5", suit: "♠", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-21", rank: "5", suit: "♥", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1322,37 +1321,37 @@ const DouDiZhu: React.FC = () => {
                       { id: "-22", rank: "3", suit: "♠", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-23", rank: "3", suit: "♥", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-24", rank: "3", suit: "♣", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-25", rank: "4", suit: "♦", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-26", rank: "4", suit: "♣", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-27", rank: "4", suit: "♠", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1363,49 +1362,49 @@ const DouDiZhu: React.FC = () => {
                       { id: "-50", rank: "3", suit: "♠", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-51", rank: "3", suit: "♥", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-52", rank: "3", suit: "♣", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-53", rank: "4", suit: "♦", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-54", rank: "4", suit: "♣", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-55", rank: "4", suit: "♠", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-56", rank: "5", suit: "♦", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-57", rank: "6", suit: "♣", value: 6 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1416,61 +1415,61 @@ const DouDiZhu: React.FC = () => {
                       { id: "-60", rank: "3", suit: "♠", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-61", rank: "3", suit: "♥", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-62", rank: "3", suit: "♣", value: 3 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-63", rank: "4", suit: "♦", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-64", rank: "4", suit: "♣", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-65", rank: "4", suit: "♠", value: 4 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-66", rank: "5", suit: "♦", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-67", rank: "5", suit: "♣", value: 5 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-68", rank: "6", suit: "♠", value: 6 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-69", rank: "6", suit: "♥", value: 6 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1481,25 +1480,25 @@ const DouDiZhu: React.FC = () => {
                       { id: "-28", rank: "2", suit: "♠", value: 15 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-29", rank: "2", suit: "♥", value: 15 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-30", rank: "2", suit: "♣", value: 15 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-31", rank: "2", suit: "♦", value: 15 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
@@ -1510,19 +1509,20 @@ const DouDiZhu: React.FC = () => {
                       { id: "-32", rank: "joker", suit: "🃟", value: 16 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                     {renderCard(
                       { id: "-33", rank: "JOKER", suit: "🂿", value: 17 },
                       false,
                       false,
-                      "mini"
+                      "mini",
                     )}
                   </div>
                 </div>
               </div>
               <p style={{ marginTop: "1rem" }}>
-                <strong>获胜条件：</strong>第一个出完所有手牌的玩家的阵营获胜（地主单独一方，两个农民同阵营）。
+                <strong>获胜条件：</strong>
+                第一个出完所有手牌的玩家的阵营获胜（地主单独一方，两个农民同阵营）。
               </p>
             </div>
             <button
@@ -1607,7 +1607,7 @@ const DouDiZhu: React.FC = () => {
                 {gamePhase === "end" && players[1].cards.length > 0 && (
                   <div className="remaining-cards">
                     {players[1].cards.map((c) =>
-                      renderCard(c, false, false, "mini")
+                      renderCard(c, false, false, "mini"),
                     )}
                   </div>
                 )}
@@ -1634,12 +1634,12 @@ const DouDiZhu: React.FC = () => {
                       lastPlayedCards.length <= 5
                         ? "scale-large"
                         : lastPlayedCards.length <= 10
-                        ? "scale-medium"
-                        : "scale-small"
+                          ? "scale-medium"
+                          : "scale-small"
                     }`}
                   >
                     {lastPlayedCards.map((c) =>
-                      renderCard(c, false, false, "normal")
+                      renderCard(c, false, false, "normal"),
                     )}
                   </div>
                 </>
@@ -1674,7 +1674,7 @@ const DouDiZhu: React.FC = () => {
                 {gamePhase === "end" && players[2].cards.length > 0 && (
                   <div className="remaining-cards">
                     {players[2].cards.map((c) =>
-                      renderCard(c, false, false, "mini")
+                      renderCard(c, false, false, "mini"),
                     )}
                   </div>
                 )}
@@ -1701,7 +1701,9 @@ const DouDiZhu: React.FC = () => {
                     sortOrder === "desc" ? "is-default" : "is-reversed"
                   }`}
                   onClick={toggleSortOrder}
-                  title={sortOrder === "asc" ? "当前：小 → 大" : "当前：大 → 小"}
+                  title={
+                    sortOrder === "asc" ? "当前：小 → 大" : "当前：大 → 小"
+                  }
                 >
                   <span className="sort-arrow">➜</span>
                 </button>
@@ -1751,46 +1753,53 @@ const DouDiZhu: React.FC = () => {
               )}
             </div>
 
-            <div className="hand-cards-scroll-container" onTouchMove={handleTouchMove}>
+            <div
+              className="hand-cards-scroll-container"
+              onTouchMove={handleTouchMove}
+            >
               {isSmallScreen && myCards.length >= 10 ? (
                 <>
                   <div className="hand-cards">
-                    {myCards.slice(0, Math.ceil(myCards.length / 2)).map((card, idx) => (
-                      <div
-                        key={card.id}
-                        className="card-motion"
-                        ref={(el) => {
-                          cardMotionRefs.current[card.id] = el;
-                        }}
-                      >
-                        {renderCard(
-                          card,
-                          gamePhase !== "end",
-                          selectedCards.includes(card.id),
-                          "normal",
-                          idx
-                        )}
-                      </div>
-                    ))}
+                    {myCards
+                      .slice(0, Math.ceil(myCards.length / 2))
+                      .map((card, idx) => (
+                        <div
+                          key={card.id}
+                          className="card-motion"
+                          ref={(el) => {
+                            cardMotionRefs.current[card.id] = el;
+                          }}
+                        >
+                          {renderCard(
+                            card,
+                            gamePhase !== "end",
+                            selectedCards.includes(card.id),
+                            "normal",
+                            idx,
+                          )}
+                        </div>
+                      ))}
                   </div>
                   <div className="hand-cards" style={{ marginTop: "-2rem" }}>
-                    {myCards.slice(Math.ceil(myCards.length / 2)).map((card, idx) => (
-                      <div
-                        key={card.id}
-                        className="card-motion"
-                        ref={(el) => {
-                          cardMotionRefs.current[card.id] = el;
-                        }}
-                      >
-                        {renderCard(
-                          card,
-                          gamePhase !== "end",
-                          selectedCards.includes(card.id),
-                          "normal",
-                          idx + Math.ceil(myCards.length / 2)
-                        )}
-                      </div>
-                    ))}
+                    {myCards
+                      .slice(Math.ceil(myCards.length / 2))
+                      .map((card, idx) => (
+                        <div
+                          key={card.id}
+                          className="card-motion"
+                          ref={(el) => {
+                            cardMotionRefs.current[card.id] = el;
+                          }}
+                        >
+                          {renderCard(
+                            card,
+                            gamePhase !== "end",
+                            selectedCards.includes(card.id),
+                            "normal",
+                            idx + Math.ceil(myCards.length / 2),
+                          )}
+                        </div>
+                      ))}
                   </div>
                 </>
               ) : (
@@ -1808,7 +1817,7 @@ const DouDiZhu: React.FC = () => {
                         gamePhase !== "end",
                         selectedCards.includes(card.id),
                         "normal",
-                        idx
+                        idx,
                       )}
                     </div>
                   ))}

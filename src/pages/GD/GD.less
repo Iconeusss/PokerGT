@@ -129,7 +129,7 @@ body,
   border: 1px solid #374151;
   border-radius: 1rem;
   padding: 2rem;
-  max-width: 500px;
+  max-width: 600px;
   width: 90%;
   color: #f3f4f6;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
@@ -234,6 +234,10 @@ body,
             text-align: left;
             width: 100%;
           }
+
+          &.text-left {
+            text-align: left;
+          }
         }
       }
     }
@@ -253,6 +257,45 @@ body,
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+// 胜利呼吸动画 - 放大缩小效果
+@keyframes winner-breathing {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 20px rgba(251, 191, 36, 0.8),
+      0 0 40px rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow:
+      0 0 30px rgba(251, 191, 36, 1),
+      0 0 60px rgba(251, 191, 36, 0.6);
+  }
+}
+
+// 奖杯弹跳动画
+@keyframes trophy-bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+// 胜利脉冲动画
+@keyframes winner-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(250, 204, 21, 1);
   }
 }
 
@@ -296,6 +339,15 @@ body,
     right: 1rem;
     margin: 0;
     z-index: 100;
+  }
+
+  &.top-left {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    margin: 0;
+    z-index: 100;
+    flex-direction: column; // Left buttons are vertical
   }
 }
 
@@ -592,6 +644,33 @@ body,
     animation: winner-pulse 1.2s ease-in-out infinite;
   }
 
+  // 游戏结束时的胜利特效 - 黄框带高光 + 呼吸效果
+  &.game-winner {
+    border-color: #fbbf24 !important;
+    box-shadow:
+      0 0 20px rgba(251, 191, 36, 0.8),
+      0 0 40px rgba(251, 191, 36, 0.4),
+      inset 0 0 10px rgba(251, 191, 36, 0.2);
+    animation: winner-breathing 2s ease-in-out infinite;
+    background: linear-gradient(
+      135deg,
+      rgba(251, 191, 36, 0.1) 0%,
+      rgba(0, 0, 0, 0.6) 50%,
+      rgba(251, 191, 36, 0.1) 100%
+    );
+
+    &::before {
+      content: "🏆";
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.5rem;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+      animation: trophy-bounce 1s ease-in-out infinite;
+    }
+  }
+
   &.landlord {
     border-color: #ef4444 !important; // 红色边框
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); // 红色光晕
@@ -756,20 +835,20 @@ body,
   }
 
   @keyframes pulse-winner {
-  0% {
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    0% {
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+    }
+    100% {
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    }
   }
-  50% {
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
-  }
-  100% {
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-  }
-}
 
-.table-title {
-  display: none; // 隐藏旧的标题
-}
+  .table-title {
+    display: none; // 隐藏旧的标题
+  }
 
   .table-info {
     display: none; // 隐藏旧的极牌信息
@@ -941,12 +1020,31 @@ body,
   }
 
   &.game-winner {
-    border-color: #ffd700;
-    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
-    animation: pulse-winner 2s infinite;
-    transform: scale(1.05);
+    border-color: #fbbf24 !important;
+    box-shadow:
+      0 0 20px rgba(251, 191, 36, 0.8),
+      0 0 40px rgba(251, 191, 36, 0.4),
+      inset 0 0 10px rgba(251, 191, 36, 0.2);
+    animation: winner-breathing 2s ease-in-out infinite;
+    background: linear-gradient(
+      135deg,
+      rgba(251, 191, 36, 0.1) 0%,
+      rgba(0, 0, 0, 0.6) 50%,
+      rgba(251, 191, 36, 0.1) 100%
+    );
     z-index: 100;
     transition: all 0.5s ease;
+
+    &::before {
+      content: "🏆";
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+      animation: trophy-bounce 1s ease-in-out infinite;
+    }
   }
 
   .hand-header {
@@ -1649,6 +1747,129 @@ body,
     &:active {
       transform: translateY(2px);
       box-shadow: 0 1px 0 #6b21a8;
+    }
+  }
+}
+
+// Played Cards Areas
+.played-cards-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; // Allow clicks to pass through to table/cards
+  z-index: 20;
+}
+
+.played-cards-area {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 20;
+  pointer-events: none;
+
+  // 1
+  &.pos-0 {
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  // 2
+  &.pos-1 {
+    top: 50%;
+    left: 14%;
+    transform: translateY(-50%);
+    flex-direction: row-reverse; // Cards flow inwards
+  }
+
+  // 3
+  &.pos-2 {
+    top: 24%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  // 4
+  &.pos-3 {
+    top: 50%;
+    right: 14%;
+    transform: translateY(-50%);
+  }
+
+  .pass-text {
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 0.5rem 1.5rem;
+    border-radius: 1rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .played-card-group {
+    display: flex;
+    // Overlap handling for played cards
+
+    .card {
+      margin-left: -30px; // Overlap
+      transform-origin: center;
+
+      &:first-child {
+        margin-left: 0;
+      }
+
+      &.small {
+        transform: scale(0.85);
+      }
+    }
+  }
+}
+
+// 响应式按钮调整
+@media (max-width: 768px) {
+  .button-group {
+    &.top-right,
+    &.top-left {
+      top: 0.5rem;
+
+      .btn {
+        padding: 0.4rem 1rem;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    &.top-right {
+      right: 0.5rem;
+    }
+
+    &.top-left {
+      left: 0.5rem;
+      gap: 0.5rem; // Reduce gap for vertical layout
+    }
+  }
+}
+
+@media (max-width: 500px) {
+  .button-group {
+    &.top-right,
+    &.top-left {
+      transform: scale(0.85); // Further reduce size on very small screens
+      transform-origin: top center;
+    }
+
+    &.top-left {
+      transform-origin: top left;
+    }
+
+    &.top-right {
+      transform-origin: top right;
     }
   }
 }
