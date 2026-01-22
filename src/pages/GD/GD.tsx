@@ -674,7 +674,37 @@ const GuanDan: React.FC = () => {
         return null;
       };
 
+      // 检查双贡情况下多个玩家是否合起来有双大王（组合抗贡）
+      const checkMultiPlayerDoubleJoker = () => {
+        if (pendingPayTributes.length < 2) return null;
+
+        // 收集所有需要进贡玩家的大王
+        const allJokers: { playerId: number; joker: Card }[] = [];
+        for (const tribute of pendingPayTributes) {
+          const p = players[tribute.payerId];
+          const playerJokers = p.cards.filter((c) => c.rank === "JOKER");
+          playerJokers.forEach((joker) => {
+            allJokers.push({ playerId: tribute.payerId, joker });
+          });
+        }
+
+        // 如果总共有2张或以上大王，可以组合抗贡
+        if (allJokers.length >= 2) {
+          return {
+            playerIds: [
+              ...new Set(allJokers.slice(0, 2).map((j) => j.playerId)),
+            ],
+            jokers: allJokers.slice(0, 2).map((j) => j.joker),
+            jokerSources: allJokers.slice(0, 2),
+          };
+        }
+        return null;
+      };
+
       const singlePlayerDoubleJoker = checkSinglePlayerDoubleJoker();
+      const multiPlayerDoubleJoker = !singlePlayerDoubleJoker
+        ? checkMultiPlayerDoubleJoker()
+        : null;
       if (singlePlayerDoubleJoker) {
         // 单个玩家有双大王，自动抗贡
         let innerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -688,8 +718,8 @@ const GuanDan: React.FC = () => {
               ...t,
               isAntiTribute: true,
               status: "anti_tribute_success",
-              // 第一个 tribute 记录大王（因为是单人双大王）
-              antiTributeJokers: idx === 0 ? jokers : undefined,
+              // 单人双大王时，每个tribute各显示一张大王
+              antiTributeJokers: jokers[idx] ? [jokers[idx]] : undefined,
             })),
           );
           // 5秒后开始下一轮
@@ -698,6 +728,45 @@ const GuanDan: React.FC = () => {
             setMessage("抗贡成功，游戏开始");
             // 抗贡成功时，进贡方先出
             setCurrentPlayer(singlePlayerDoubleJoker.playerId);
+          }, 5000);
+        }, 1000);
+        return () => {
+          clearTimeout(timer);
+          if (innerTimer) clearTimeout(innerTimer);
+        };
+      }
+
+      // 多个玩家合起来有双大王，自动组合抗贡
+      if (multiPlayerDoubleJoker) {
+        let innerTimer: ReturnType<typeof setTimeout> | null = null;
+        const timer = setTimeout(() => {
+          const { playerIds, jokers, jokerSources } = multiPlayerDoubleJoker;
+          const playerNames = playerIds.map((id) => `玩家${id + 1}`).join("、");
+          setMessage(
+            `抗贡成功！${playerNames} 合力出示大王：${jokers.map((j) => j.suit).join(" ")}`,
+          );
+          setTributeInfos((prev) =>
+            prev.map((t) => {
+              // 找到这个 tribute 对应的大王
+              const jokerForTribute = jokerSources.find(
+                (js) => js.playerId === t.payerId,
+              );
+              return {
+                ...t,
+                isAntiTribute: true,
+                status: "anti_tribute_success",
+                antiTributeJokers: jokerForTribute
+                  ? [jokerForTribute.joker]
+                  : undefined,
+              };
+            }),
+          );
+          // 5秒后开始下一轮
+          innerTimer = setTimeout(() => {
+            setGamePhase("playing");
+            setMessage("抗贡成功，游戏开始");
+            // 抗贡成功时，第一个出大王的玩家先出
+            setCurrentPlayer(playerIds[0]);
           }, 5000);
         }, 1000);
         return () => {
@@ -1468,7 +1537,7 @@ const GuanDan: React.FC = () => {
     setSelectedCards([]);
   };
 
-  // DEV: 测试双贡-分得大王 (每人一张，不能抗贡)
+  // DEV: 测试双贡-分得大王 (每人一张，现在可以组合抗贡)
   const testDistributedJokers = () => {
     // 1. 给玩家0发一张大王
     const joker1: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j1" };
@@ -1514,7 +1583,7 @@ const GuanDan: React.FC = () => {
     ];
     setTributeInfos(tributes);
     setGamePhase("tribute");
-    setMessage("DEV: 已重置为双贡-大王分散场景 (应无法抗贡)");
+    setMessage("DEV: 已重置为双贡-大王分散场景 (现在可以组合抗贡)");
   };
 
   const confirmTribute = () => {
@@ -2891,7 +2960,7 @@ const GuanDan: React.FC = () => {
                   padding: "0.4rem 1rem",
                 }}
               >
-                测试分王
+                测试抗贡
               </button>
             </>
           )}
