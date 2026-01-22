@@ -31,7 +31,8 @@ interface TributeInfo {
   receiverId: number;
   payCard?: Card;
   returnCard?: Card;
-  isAntiTribute: boolean; // 双大王
+  isAntiTribute: boolean;
+  antiTributeJokers?: Card[]; // 用于抗贡的大王牌
   status: "pending_pay" | "pending_return" | "done" | "anti_tribute_success";
 }
 
@@ -73,27 +74,26 @@ const rankValues: { [key: string]: number } = {
 };
 
 // 工具函数
-const createDeck = (suffix: string): Card[] => {
+const createDeck = (suffix: string, deckCount: number): Card[] => {
   const deck: Card[] = [];
-  suits.forEach((suit) =>
-    ranks.forEach((rank) => {
-      deck.push({
-        suit,
-        rank,
-        id: `${suit}${rank}-${suffix}`,
-        value: rankValues[rank],
-      });
-    }),
-  );
-  deck.push(
-    { suit: "🃟", rank: "joker", id: `joker-${suffix}`, value: 16 },
-    { suit: "🂿", rank: "JOKER", id: `JOKER-${suffix}`, value: 17 },
-  );
+  for (let d = 0; d < deckCount; d++) {
+    const deckSuffix = deckCount > 1 ? `${suffix}-${d + 1}` : suffix;
+    suits.forEach((suit) =>
+      ranks.forEach((rank) => {
+        deck.push({
+          suit,
+          rank,
+          id: `${suit}${rank}-${deckSuffix}`,
+          value: rankValues[rank],
+        });
+      }),
+    );
+    deck.push(
+      { suit: "🃟", rank: "joker", id: `joker-${deckSuffix}`, value: 16 },
+      { suit: "🂿", rank: "JOKER", id: `JOKER-${deckSuffix}`, value: 17 },
+    );
+  }
   return deck;
-};
-
-const createDoubleDeck = (): Card[] => {
-  return [...createDeck("a"), ...createDeck("b")];
 };
 
 const shuffleDeck = (deck: Card[]): Card[] => {
@@ -473,7 +473,7 @@ const processCardsForRound = (cards: Card[], levelRank: LevelRank): Card[] => {
     let isWild = false;
 
     if (c.rank === levelRank) {
-      value = 15; // 极牌15 A14 小王16
+      value = 15; // 级牌15 A14 小王16
       if (c.suit === "♥") {
         isWild = true; // 只有红桃级牌是逢人配
       }
@@ -553,7 +553,7 @@ const GuanDan: React.FC = () => {
   const [showScoreboard, setShowScoreboard] = useState(false);
   const [scoreHistory, setScoreHistory] = useState<
     { round: number; teamLevels: Record<number, LevelRank> }[]
-  >([{ round: 1, teamLevels: { 0: "2", 1: "2" } }]);
+  >([]);
   const [roundIndex, setRoundIndex] = useState(1);
   const [finishedOrder, setFinishedOrder] = useState<number[]>([]);
   const [roundLeaderId, setRoundLeaderId] = useState<number>(0);
@@ -571,7 +571,18 @@ const GuanDan: React.FC = () => {
   });
   const levelCardValue = 15;
 
-  // 辅助函数：获取最大的非极牌
+  // 滑动
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
+  const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
+  const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
+  const dragEndIndexRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const sortFlipFromRectsRef = useRef<Record<string, DOMRect>>({});
+  const sortFlipPendingRef = useRef(false);
+  const cardMotionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // 辅助函数：获取最大的非级牌
   const getMaxTributeCard = (cards: Card[], lvlRank: string): Card | null => {
     // 排除级牌
     const candidates = cards.filter((c) => c.rank !== lvlRank);
@@ -603,9 +614,12 @@ const GuanDan: React.FC = () => {
         )
       ) {
         // 切换到游戏阶段
+        setMessage("进贡成功");
         const timer = setTimeout(() => {
+          // 显示下一轮信息
+          const roundMsg = `第 ${roundIndex + 1} / 7 轮开始，当前级牌：${levelRank} (本方:${teamLevels[0]}, 对方:${teamLevels[1]})`;
+          setMessage(roundMsg);
           setGamePhase("playing");
-          setMessage("进贡结束，游戏开始");
 
           // 决定谁先出牌
           // 规则：进贡完成后，贡最大牌的玩家先出
@@ -663,27 +677,33 @@ const GuanDan: React.FC = () => {
       const singlePlayerDoubleJoker = checkSinglePlayerDoubleJoker();
       if (singlePlayerDoubleJoker) {
         // 单个玩家有双大王，自动抗贡
+        let innerTimer: ReturnType<typeof setTimeout> | null = null;
         const timer = setTimeout(() => {
           const { playerId, jokers } = singlePlayerDoubleJoker;
           setMessage(
             `抗贡成功！玩家${playerId + 1} 出示双大王：${jokers.map((j) => j.suit).join(" ")}`,
           );
           setTributeInfos((prev) =>
-            prev.map((t) => ({
+            prev.map((t, idx) => ({
               ...t,
               isAntiTribute: true,
               status: "anti_tribute_success",
+              // 第一个 tribute 记录大王（因为是单人双大王）
+              antiTributeJokers: idx === 0 ? jokers : undefined,
             })),
           );
           // 5秒后开始下一轮
-          setTimeout(() => {
+          innerTimer = setTimeout(() => {
             setGamePhase("playing");
             setMessage("抗贡成功，游戏开始");
             // 抗贡成功时，进贡方先出
             setCurrentPlayer(singlePlayerDoubleJoker.playerId);
           }, 5000);
         }, 1000);
-        return () => clearTimeout(timer);
+        return () => {
+          clearTimeout(timer);
+          if (innerTimer) clearTimeout(innerTimer);
+        };
       }
 
       // 如果有AI需要进贡，先同时处理所有AI
@@ -735,12 +755,20 @@ const GuanDan: React.FC = () => {
             setTributeInfos((prev) =>
               prev.map((t) => {
                 const payInfo = payCards.find((p) => p.tribute === t);
+                // 记录大王牌用于显示
+                const joker =
+                  payInfo?.card.rank === "JOKER"
+                    ? [payInfo.card]
+                    : t.payCard?.rank === "JOKER"
+                      ? [t.payCard]
+                      : undefined;
                 if (payInfo) {
                   return {
                     ...t,
                     payCard: payInfo.card,
                     isAntiTribute: true,
                     status: "anti_tribute_success",
+                    antiTributeJokers: joker,
                   };
                 }
                 if (t.payCard) {
@@ -748,6 +776,7 @@ const GuanDan: React.FC = () => {
                     ...t,
                     isAntiTribute: true,
                     status: "anti_tribute_success",
+                    antiTributeJokers: joker,
                   };
                 }
                 return {
@@ -757,8 +786,10 @@ const GuanDan: React.FC = () => {
                 };
               }),
             );
-            // 5秒后开始下一轮
-            setTimeout(() => {
+            // 5秒后开始下一轮 - 注意：这个内部 setTimeout 在组件卸载前会执行完毕
+            // 因为外部 timer 只有 1 秒延迟，而内部需要额外 5 秒
+            let innerTimer: ReturnType<typeof setTimeout> | null = null;
+            innerTimer = setTimeout(() => {
               setGamePhase("playing");
               setMessage("抗贡成功，游戏开始");
               // 找到贡大王的玩家先出
@@ -768,7 +799,11 @@ const GuanDan: React.FC = () => {
                 0;
               setCurrentPlayer(firstJokerPayer);
             }, 5000);
-            return;
+            // 保存引用以便清理
+            return () => {
+              clearTimeout(timer);
+              if (innerTimer) clearTimeout(innerTimer);
+            };
           }
 
           // 更新玩家手牌
@@ -820,7 +855,7 @@ const GuanDan: React.FC = () => {
       if (isReceiverAI) {
         const timer = setTimeout(() => {
           const p = players[receiverId];
-          // AI 还贡最小的 <= 10 的非极牌
+          // AI 还贡最小的 <= 10 的非级牌
           const validCards = p.cards.filter((c) => c.rank !== levelRank);
           validCards.sort((a, b) => a.value - b.value);
 
@@ -838,17 +873,6 @@ const GuanDan: React.FC = () => {
     }
   }, [gamePhase, tributeInfos, players, levelRank]);
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
-  const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
-  const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
-
-  const dragEndIndexRef = useRef<number | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const sortFlipFromRectsRef = useRef<Record<string, DOMRect>>({});
-  const sortFlipPendingRef = useRef(false);
-  const cardMotionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   const captureSortFlipRects = () => {
     const rects: Record<string, DOMRect> = {};
     for (const c of myCards) {
@@ -861,7 +885,7 @@ const GuanDan: React.FC = () => {
   };
 
   const createPlayersForRound = (activeLevel: LevelRank): Player[] => {
-    const deck = shuffleDeck(createDoubleDeck());
+    const deck = shuffleDeck(createDeck("deck", 2));
     const hands: Card[][] = [
       deck.slice(0, 27),
       deck.slice(27, 54),
@@ -873,40 +897,11 @@ const GuanDan: React.FC = () => {
       ),
     );
 
-    return [
-      {
-        id: 0,
-        name: "玩家1 (你)",
-        cards: hands[0],
-        playCount: 0,
-        teamId: 0,
-        teamScore: 0,
-      },
-      {
-        id: 1,
-        name: "玩家2",
-        cards: hands[1],
-        playCount: 0,
-        teamId: 1,
-        teamScore: 0,
-      },
-      {
-        id: 2,
-        name: "玩家3",
-        cards: hands[2],
-        playCount: 0,
-        teamId: 0,
-        teamScore: 0,
-      },
-      {
-        id: 3,
-        name: "玩家4",
-        cards: hands[3],
-        playCount: 0,
-        teamId: 1,
-        teamScore: 0,
-      },
-    ];
+    return players.map((props, index) => ({
+      ...props,
+      cards: hands[index],
+      playCount: 0,
+    }));
   };
 
   const getNextActivePlayer = (from: number, order: number[]): number => {
@@ -979,19 +974,16 @@ const GuanDan: React.FC = () => {
     const newPlayers = createPlayersForRound(activeLevel);
     setPlayers(newPlayers);
     setSelectedCards([]);
-    // 头游的队伍将在下一局首先出牌
-    // 规则调整：下一轮由第四名开始先出牌
 
     setCurrentPlayer(startingPlayerId);
     if (nextRoundIndex === 1) {
       setRoundLeaderId(-1);
     } else {
-      setRoundLeaderId(-1); // 确保新一轮开始时没有任何人有红框，直到产生新的头家
+      setRoundLeaderId(-1);
     }
     setLastPlayedCards([]);
     setLastPlayerId(-1);
     setPlayerActions({}); // 清除桌面动作
-    setPassCount(0);
     setPassCount(0);
     setFinishedOrder([]);
     setSortMode("value");
@@ -1001,18 +993,9 @@ const GuanDan: React.FC = () => {
     setTeamLevels(nextTeamLevels);
     setLevelRank(activeLevel);
 
-    if (nextRoundIndex === 1) {
-      setScoreHistory([{ round: 1, teamLevels: nextTeamLevels }]);
-    } else {
-      setScoreHistory((prev) => {
-        if (prev.some((h) => h.round === nextRoundIndex)) return prev;
-        return [...prev, { round: nextRoundIndex, teamLevels: nextTeamLevels }];
-      });
-    }
-
     // 进贡逻辑
     let nextPhase: "playing" | "tribute" = "playing";
-    let nextMessage = `第 ${nextRoundIndex} / 7 轮开始，当前极牌：${activeLevel} (本方:${nextTeamLevels[0]}, 对方:${nextTeamLevels[1]})`;
+    let nextMessage = `第 ${nextRoundIndex} / 7 轮开始，当前级牌：${activeLevel} (本方:${nextTeamLevels[0]}, 对方:${nextTeamLevels[1]})`;
 
     if (nextRoundIndex > 1 && prevFinishedOrder.length === 4) {
       const tributes = calculateTribute(prevFinishedOrder);
@@ -1310,7 +1293,7 @@ const GuanDan: React.FC = () => {
     const maxLevelIdx = levelSequence.length - 1; // A 的索引是 length-1
 
     // 如果超过了A (即 nextLevelIdxRaw > maxLevelIdx)，或者正好打过A?
-    // 规则："如果七轮内有一方获胜后极牌超过了A则直接获胜"
+    // 规则："如果七轮内有一方获胜后级牌超过了A则直接获胜"
     // 这意味着如果当前是A，然后赢了，就超过A。或者如果当前是K，赢了3级，也超过A。
 
     let isGameOver = false;
@@ -1331,16 +1314,21 @@ const GuanDan: React.FC = () => {
 
     setTeamLevels(nextTeamLevels);
 
-    // 下一把的极牌由获胜方决定
+    // 记录本轮结束后的分数
+    setScoreHistory((prev) => {
+      if (prev.some((h) => h.round === roundIndex)) return prev;
+      return [...prev, { round: roundIndex, teamLevels: nextTeamLevels }];
+    });
+
+    // 下一把的级牌由获胜方决定
     const winnerTeamId = firstTeam;
     const nextActiveLevel = nextTeamLevels[winnerTeamId];
 
-    // const nextLevel = nextActiveLevel; // 显示用 nextActiveLevel
     const winnerNames = finalOrder.map(
       (pid) => players[pid]?.name ?? `玩家${pid + 1}`,
     );
 
-    let endMsg = `第 ${roundIndex} / 7 轮结束：${winnerNames.join(" → ")}。队伍${firstTeam + 1}升级 + ${delta}，下轮极牌：${nextActiveLevel}`;
+    let endMsg = `第 ${roundIndex} / 7 轮结束：${winnerNames.join(" → ")}。队伍${firstTeam + 1}升级 + ${delta}，下轮级牌：${nextActiveLevel}`;
 
     if (isGameOver) {
       setGamePhase("end");
@@ -1382,7 +1370,6 @@ const GuanDan: React.FC = () => {
     setMessage(endMsg);
 
     setTimeout(() => {
-      // 规则：下一轮由第四名（上游）开始先出牌
       const nextStarter = finalOrder.length >= 4 ? finalOrder[3] : 0;
       startRound(
         roundIndex + 1,
@@ -1455,7 +1442,6 @@ const GuanDan: React.FC = () => {
         );
 
         if (payerIndex !== -1 && tribute.payCard) {
-          // returnCard is 'card' argument
           next[payerIndex] = {
             ...next[payerIndex],
             cards: [...next[payerIndex].cards, card].sort(
@@ -1482,14 +1468,70 @@ const GuanDan: React.FC = () => {
     setSelectedCards([]);
   };
 
+  // DEV: 测试双贡-分得大王 (每人一张，不能抗贡)
+  const testDistributedJokers = () => {
+    // 1. 给玩家0发一张大王
+    const joker1: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j1" };
+    const paddingCards0 = Array.from({ length: 26 }, (_, i) => ({
+      suit: "♠",
+      rank: "3",
+      value: 3,
+      id: `test-pad0-${i}`,
+    }));
+    const hand0 = [joker1, ...paddingCards0];
+
+    // 2. 给玩家2发一张大王
+    const joker2: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j2" };
+    const paddingCards2 = Array.from({ length: 26 }, (_, i) => ({
+      suit: "♠",
+      rank: "3",
+      value: 3,
+      id: `test-pad2-${i}`,
+    }));
+    const hand2 = [joker2, ...paddingCards2];
+
+    setPlayers((prev) => {
+      const next = [...prev];
+      next[0] = { ...next[0], cards: hand0 };
+      next[2] = { ...next[2], cards: hand2 };
+      return next;
+    });
+
+    // 2. 设置双贡状态
+    const tributes: TributeInfo[] = [
+      {
+        payerId: 0,
+        receiverId: 1,
+        status: "pending_pay",
+        isAntiTribute: false,
+      },
+      {
+        payerId: 2,
+        receiverId: 3,
+        status: "pending_pay",
+        isAntiTribute: false,
+      },
+    ];
+    setTributeInfos(tributes);
+    setGamePhase("tribute");
+    setMessage("DEV: 已重置为双贡-大王分散场景 (应无法抗贡)");
+  };
+
   const confirmTribute = () => {
-    const activeTribute = tributeInfos.find(
-      (t) => t.status === "pending_pay" || t.status === "pending_return",
-    );
+    // 优先处理玩家自己的进贡/还贡任务
+    const activeTribute =
+      tributeInfos.find(
+        (t) =>
+          (t.status === "pending_pay" && t.payerId === 0) ||
+          (t.status === "pending_return" && t.receiverId === 0),
+      ) ||
+      tributeInfos.find(
+        (t) => t.status === "pending_pay" || t.status === "pending_return",
+      );
     if (!activeTribute) return;
 
     if (activeTribute.status === "pending_pay" && activeTribute.payerId === 0) {
-      // 规则：自动进贡最大的非极牌
+      // 规则：自动进贡最大的非级牌
       const payCard = getMaxTributeCard(players[0].cards, levelRank);
       if (!payCard) {
         setMessage("没有可进贡的牌");
@@ -1508,7 +1550,7 @@ const GuanDan: React.FC = () => {
       const card = players[0].cards.find((c) => c.id === cardId);
       if (!card) return;
 
-      // 规则：还贡的牌必须 <= 10 且不是极牌
+      // 规则：还贡的牌必须 <= 10 且不是级牌
       if (card.rank === levelRank) {
         setMessage("不能还贡级牌");
         return;
@@ -1595,9 +1637,6 @@ const GuanDan: React.FC = () => {
 
       // 如果最后出牌的玩家已经出完了，接风
       if (lastPlayerId !== -1 && finishedOrder.includes(lastPlayerId)) {
-        // 掼蛋接风规则：
-        // 1. 优先由对家接风（如果对家未出完）
-        // 2. 如果对家也出完了，则由下家接风（这种情况其实已经是双上，只剩最后一家了）
         const teammateId = (lastPlayerId + 2) % 4;
         if (!finishedOrder.includes(teammateId)) {
           nextLead = teammateId;
@@ -1614,6 +1653,12 @@ const GuanDan: React.FC = () => {
         nextLead = getNextActivePlayer(leadOrigin - 1, finishedOrder);
         setMessage(`${players[nextLead]?.name} 获得出牌权`);
       }
+
+      // 记录最后一个过牌动作
+      setPlayerActions((prev) => ({
+        ...prev,
+        [playerId]: { type: "pass" },
+      }));
 
       setCurrentPlayer(nextLead);
       return;
@@ -1947,7 +1992,12 @@ const GuanDan: React.FC = () => {
       // 三带二
       fullHouses.forEach((s) => {
         let priority = fullHouses.length * 2;
-        if (s.tripleValue >= 14) priority += 3;
+        // 级牌(value=15)和大牌(A, 王)应该保留
+        if (s.tripleValue === 15) {
+          priority -= 3;
+        } else if (s.tripleValue >= 14) {
+          priority -= 2; // A的葫芦也应该保留
+        }
         candidates.push({
           type: "fullhouse",
           cards: s.cards,
@@ -1959,7 +2009,12 @@ const GuanDan: React.FC = () => {
       // 三张
       triples.forEach((s) => {
         let priority = triples.length;
-        if (s.value >= 14) priority += 2;
+        // 级牌(value=15)和大牌(A, 王)应该保留
+        if (s.value === 15) {
+          priority -= 3;
+        } else if (s.value >= 14) {
+          priority -= 2; // A的三张也应该保留
+        }
         candidates.push({
           type: "triple",
           cards: s.cards,
@@ -1971,7 +2026,12 @@ const GuanDan: React.FC = () => {
       // 对子
       pairs.forEach((s) => {
         let priority = pairs.length * 0.5;
-        if (s.value >= 14) priority += 2;
+        // 级牌(value=15)和大牌(A, 王)应该保留
+        if (s.value === 15) {
+          priority -= 3;
+        } else if (s.value >= 14) {
+          priority -= 2; // A的对子也应该保留
+        }
         candidates.push({
           type: "pair",
           cards: s.cards,
@@ -1990,6 +2050,16 @@ const GuanDan: React.FC = () => {
       // 返回最优牌型
       if (candidates.length > 0) {
         return candidates[0].cards;
+      }
+
+      // 残局检测：如果手里全是单牌（没有任何对子、三张等组合），从大到小出
+      const isAllSingles = sortedValues.every((v) => groups[v].length === 1);
+      if (isAllSingles && hand.length <= 10) {
+        // 残局只剩单牌时，从大到小出（先出大牌压制）
+        const highestValue = sortedValues[sortedValues.length - 1];
+        if (highestValue !== undefined) {
+          return [groups[highestValue][0]];
+        }
       }
 
       // 兜底：单张（最小）
@@ -2045,16 +2115,16 @@ const GuanDan: React.FC = () => {
     // 检查对手剩余手牌数量
     const opponentCards =
       opponentId >= 0 ? players[opponentId]?.cards.length || 27 : 27;
-    const needTeammateProtection = opponentCards < 10; // 对手手牌少于10张需要积极压制
+    const needTeammateProtection = opponentCards < 10; // 对手手牌少于10张需要积级压制
 
     // 检查是否是"后位队友"（passCount > 0 说明有人过牌了，可能是队友）
     const isSecondTeammate = passCount >= 1 && !isTeammate;
 
-    // 队友保护模式：对手快出完了，需要积极压制
+    // 队友保护模式：对手快出完了，需要积级压制
     const aggressiveMode = needTeammateProtection && isSecondTeammate;
 
-    // ===== 新增：极牌保守策略 =====
-    // 前期（手牌多）不轻易用极牌压对手，除非对手快出完
+    // ===== 新增：级牌保守策略 =====
+    // 前期（手牌多）不轻易用级牌压对手，除非对手快出完
     const isEarlyGame = hand.length > 15;
     const shouldConserveWildcards = isEarlyGame && !needTeammateProtection;
 
@@ -2097,11 +2167,16 @@ const GuanDan: React.FC = () => {
             groups[v].length === 3)
         ) {
           if (isTeammate && v >= 14) continue;
+          // 不要用大牌（A、级牌、王）压小牌（<10），除非激进模式或残局
+          const isEndGame = hand.length <= 10;
+          if (v >= 14 && lastType.value < 10 && !aggressiveMode && !isEndGame) {
+            continue; // 跳过大牌，选择过牌
+          }
           return [groups[v][0]];
         }
       }
 
-      // 极牌单打
+      // 级牌单打
       if (wildcards.length > 0 && 15 > lastType.value) {
         if (!isTeammate && (!shouldConserveWildcards || aggressiveMode)) {
           return [wildcards[0]];
@@ -2298,7 +2373,7 @@ const GuanDan: React.FC = () => {
             return validSmallBombs[0].cards;
           }
 
-          // 只有在极端紧急时才用大炸弹（手牌 <= 5 或对方出 A 及以上）
+          // 只有在级端紧急时才用大炸弹（手牌 <= 5 或对方出 A 及以上）
           if (hand.length <= 5 || lastType.value >= 14) {
             const validValuableBombs = valuableBombs.filter((b) =>
               canBeat(b.cards, last, levelCardValue),
@@ -2364,9 +2439,16 @@ const GuanDan: React.FC = () => {
     levelCardValue,
   ]);
 
-  const activeTributeForUI = tributeInfos.find(
-    (t) => t.status === "pending_pay" || t.status === "pending_return",
-  );
+  // 优先显示玩家自己的进贡/还贡任务
+  const activeTributeForUI =
+    tributeInfos.find(
+      (t) =>
+        (t.status === "pending_pay" && t.payerId === 0) ||
+        (t.status === "pending_return" && t.receiverId === 0),
+    ) ||
+    tributeInfos.find(
+      (t) => t.status === "pending_pay" || t.status === "pending_return",
+    );
   const showTributeButton =
     gamePhase === "tribute" &&
     activeTributeForUI &&
@@ -2399,19 +2481,19 @@ const GuanDan: React.FC = () => {
                 </div>
                 <div className="rule-item">
                   <span className="rule-label">轮数</span>
-                  <div className="rule-cards">每场 4 轮，轮末自动结算极牌</div>
+                  <div className="rule-cards">每场 4 轮，轮末自动结算级牌</div>
                 </div>
 
                 <div className="rule-title">提示</div>
                 <div className="rule-item">
-                  <span className="rule-label">极牌</span>
-                  <div className="rule-cards">当前极牌为 {levelRank}</div>
+                  <span className="rule-label">级牌</span>
+                  <div className="rule-cards">当前级牌为 {levelRank}</div>
                 </div>
                 <div className="rule-item align-top">
                   <span className="rule-label">逢人配</span>
                   <div className="rule-cards column-layout">
                     <div className="rule-desc">
-                      红桃极牌为逢人配，可代替除大小王外的任意牌
+                      红桃级牌为逢人配，可代替除大小王外的任意牌
                     </div>
                     <div className="card-row">
                       {renderCard(
@@ -2451,7 +2533,7 @@ const GuanDan: React.FC = () => {
                   <span className="rule-label">进贡</span>
                   <div className="rule-cards column-layout text-left">
                     <div>
-                      双上：双贡（给头游最大牌，极牌除外），头游还贡10以下任意牌。
+                      双上：双贡（给头游最大牌，级牌除外），头游还贡10以下任意牌。
                     </div>
                     <div>
                       单上：单贡（末游给头游大牌），头游还贡10以下任意牌。
@@ -2758,7 +2840,9 @@ const GuanDan: React.FC = () => {
               规则
             </button>
           )}
-          {(gamePhase === "playing" || gamePhase === "end") && (
+          {(gamePhase === "playing" ||
+            gamePhase === "end" ||
+            gamePhase === "tribute") && (
             <>
               <button
                 className="btn btn-home"
@@ -2797,6 +2881,17 @@ const GuanDan: React.FC = () => {
                 style={{ marginBottom: "0.1rem" }}
               >
                 重新开始
+              </button>
+              <button
+                onClick={testDistributedJokers}
+                className="btn btn-primary"
+                style={{
+                  marginBottom: "0.1rem",
+                  fontSize: "0.8rem",
+                  padding: "0.4rem 1rem",
+                }}
+              >
+                测试分王
               </button>
             </>
           )}
@@ -2841,7 +2936,13 @@ const GuanDan: React.FC = () => {
                 <div
                   className={`player-info ${currentPlayer === 2 ? "active" : ""} ${
                     finishedOrder[0] === 2 ? "landlord" : ""
-                  } ${winningTeamId !== null && players[2].teamId === winningTeamId ? "game-winner" : ""}`}
+                  } ${
+                    gamePhase === "end" &&
+                    winningTeamId !== null &&
+                    players[2].teamId === winningTeamId
+                      ? "game-winner"
+                      : ""
+                  }`}
                 >
                   <h3 className="player-name">{players[2].name}</h3>
                   <p className="player-cards-count">
@@ -2868,7 +2969,13 @@ const GuanDan: React.FC = () => {
                     finishedOrder[0] === 1 && roundLeaderId !== 1
                       ? "winner"
                       : ""
-                  } ${roundLeaderId === 1 ? "landlord" : ""} ${winningTeamId !== null && players[1].teamId === winningTeamId ? "game-winner" : ""}`}
+                  } ${roundLeaderId === 1 ? "landlord" : ""} ${
+                    gamePhase === "end" &&
+                    winningTeamId !== null &&
+                    players[1].teamId === winningTeamId
+                      ? "game-winner"
+                      : ""
+                  }`}
                 >
                   <h3 className="player-name">{players[1].name}</h3>
                   <p className="player-cards-count">
@@ -2892,7 +2999,7 @@ const GuanDan: React.FC = () => {
               <div className="table-area">
                 <div className="table-header">
                   <div className="table-info-badge">轮次: {roundIndex} / 7</div>
-                  <div className="table-info-badge">极牌：{levelRank}</div>
+                  <div className="table-info-badge">级牌：{levelRank}</div>
                 </div>
 
                 {gamePhase === "tribute" ? (
@@ -2944,6 +3051,21 @@ const GuanDan: React.FC = () => {
                               {renderCard(t.returnCard, false, false, "mini")}
                             </div>
                           )}
+                          {/* 显示抗贡用的大王 */}
+                          {t.antiTributeJokers &&
+                            t.antiTributeJokers.length > 0 && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  transform: "scale(0.6)",
+                                  margin: "-20px -10px",
+                                }}
+                              >
+                                {t.antiTributeJokers.map((joker) =>
+                                  renderCard(joker, false, false, "mini"),
+                                )}
+                              </div>
+                            )}
                           <span
                             style={{
                               color:
@@ -2966,10 +3088,7 @@ const GuanDan: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  // 非进贡阶段，中间区域不显示出牌了，因为已经移到玩家前方
-                  <div className="table-empty">
-                    {/* 可以留白，或者放一些提示 */}
-                  </div>
+                  <div className="table-empty">{/*  */}</div>
                 )}
               </div>
             </div>
@@ -2979,7 +3098,13 @@ const GuanDan: React.FC = () => {
                 <div
                   className={`player-info ${currentPlayer === 3 ? "active" : ""} ${
                     finishedOrder[0] === 3 ? "landlord" : ""
-                  } ${winningTeamId !== null && players[3].teamId === winningTeamId ? "game-winner" : ""}`}
+                  } ${
+                    gamePhase === "end" &&
+                    winningTeamId !== null &&
+                    players[3].teamId === winningTeamId
+                      ? "game-winner"
+                      : ""
+                  }`}
                 >
                   <h3 className="player-name">{players[3].name}</h3>
                   <p className="player-cards-count">
@@ -3005,7 +3130,13 @@ const GuanDan: React.FC = () => {
           <div
             className={`player-hand ${currentPlayer === 0 ? "active" : ""} ${
               finishedOrder[0] === 0 ? "landlord" : ""
-            } ${winningTeamId !== null && players[0].teamId === winningTeamId ? "game-winner" : ""}`}
+            } ${
+              gamePhase === "end" &&
+              winningTeamId !== null &&
+              players[0].teamId === winningTeamId
+                ? "game-winner"
+                : ""
+            }`}
             style={{ position: "relative" }}
           >
             <div className="hand-header">
