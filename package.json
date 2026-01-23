@@ -1,7 +1,7 @@
 {
   "name": "PokerGT",
   "private": true,
-  "version": "0.5.6.1",
+  "version": "0.5.8",
   "type": "module",
   "scripts": {
     "dev": "vite",

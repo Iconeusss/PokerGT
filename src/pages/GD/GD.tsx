@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./GD.less";
+import PlayerCard from "../../components/Card/PlayerCard";
+import { playsByAI as gdPlaysByAI } from "./ai/gdAI";
 
 interface Card {
   suit: string;
@@ -38,6 +40,19 @@ interface TributeInfo {
 
 type SortMode = "suit" | "value";
 type SortDirection = "default" | "reversed";
+
+// 游戏常量
+const GAME_CONSTANTS = {
+  LEVEL_CARD_VALUE: 15,
+  CARDS_PER_PLAYER: 27,
+  TOTAL_CARDS: 108,
+  PLAYER_COUNT: 4,
+  MAX_ROUNDS: 7,
+  AI_PLAY_DELAY_MS: 900,
+  ROUND_END_DELAY_MS: 1600,
+  TRIBUTE_DELAY_MS: 1000,
+  TRIBUTE_SUCCESS_DELAY_MS: 5000,
+};
 
 const suits = ["♠", "♥", "♣", "♦"];
 const ranks = [
@@ -549,19 +564,32 @@ const GuanDan: React.FC = () => {
     Record<number, { type: "play" | "pass"; cards?: Card[] }>
   >({});
 
-  const [showRules, setShowRules] = useState(false);
-  const [showScoreboard, setShowScoreboard] = useState(false);
+  // 弹窗状态
+  const [modals, setModals] = useState({
+    showRules: false,
+    showScoreboard: false,
+  });
+  const showRules = modals.showRules;
+  const showScoreboard = modals.showScoreboard;
+
   const [scoreHistory, setScoreHistory] = useState<
     { round: number; teamLevels: Record<number, LevelRank> }[]
   >([]);
-  const [roundIndex, setRoundIndex] = useState(1);
-  const [finishedOrder, setFinishedOrder] = useState<number[]>([]);
-  const [roundLeaderId, setRoundLeaderId] = useState<number>(0);
+
+  // 回合状态
+  const [roundState, setRoundState] = useState({
+    index: 1,
+    finishedOrder: [] as number[],
+    leaderId: 0,
+  });
+  const roundIndex = roundState.index;
+  const finishedOrder = roundState.finishedOrder;
+  const roundLeaderId = roundState.leaderId;
 
   const myCards = players[0].cards;
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
 
-  // 排序选项（合并）
+  // 排序选项
   const [sortOptions, setSortOptions] = useState({
     mode: "value" as SortMode,
     direction: "default" as SortDirection,
@@ -569,7 +597,7 @@ const GuanDan: React.FC = () => {
   const sortMode = sortOptions.mode;
   const sortDirection = sortOptions.direction;
 
-  // 级牌状态（合并）
+  // 级牌状态
   const [levelState, setLevelState] = useState({
     rank: "2" as LevelRank,
     teamLevels: { 0: "2", 1: "2" } as Record<number, LevelRank>,
@@ -578,7 +606,7 @@ const GuanDan: React.FC = () => {
   const teamLevels = levelState.teamLevels;
   const levelCardValue = 15;
 
-  // 拖拽状态（合并）
+  // 拖拽状态
   const [dragState, setDragState] = useState({
     isDragging: false,
     startIndex: null as number | null,
@@ -595,6 +623,17 @@ const GuanDan: React.FC = () => {
   const sortFlipFromRectsRef = useRef<Record<string, DOMRect>>({});
   const sortFlipPendingRef = useRef(false);
   const cardMotionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // 用于清理 endRound 中的 setTimeout
+  const roundEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 组件卸载时清理 roundEndTimer
+  useEffect(() => {
+    return () => {
+      if (roundEndTimerRef.current) {
+        clearTimeout(roundEndTimerRef.current);
+      }
+    };
+  }, []);
 
   // 辅助函数：获取最大的非级牌
   const getMaxTributeCard = (cards: Card[], lvlRank: string): Card | null => {
@@ -949,11 +988,12 @@ const GuanDan: React.FC = () => {
           if (returnCard) {
             handleTributeMove(pendingReturnTribute, returnCard, "return");
           }
-        }, 1000);
+        }, GAME_CONSTANTS.TRIBUTE_DELAY_MS);
         return () => clearTimeout(timer);
       }
     }
-  }, [gamePhase, tributeInfos, players, levelRank]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gamePhase, tributeInfos, players, levelRank, roundIndex, teamLevels]);
 
   const captureSortFlipRects = () => {
     const rects: Record<string, DOMRect> = {};
@@ -1058,18 +1098,18 @@ const GuanDan: React.FC = () => {
     setSelectedCards([]);
 
     setCurrentPlayer(startingPlayerId);
-    if (nextRoundIndex === 1) {
-      setRoundLeaderId(-1);
-    } else {
-      setRoundLeaderId(-1);
-    }
+    // 无论第几轮，leaderId 都重置为 -1
+    setRoundState((prev) => ({ ...prev, leaderId: -1 }));
     setLastPlayedCards([]);
     setLastPlayerId(-1);
-    setPlayerActions({}); // 清除桌面动作
+    setPlayerActions({});
     setPassCount(0);
-    setFinishedOrder([]);
+    setRoundState((prev) => ({
+      ...prev,
+      finishedOrder: [],
+      index: nextRoundIndex,
+    }));
     setSortOptions({ mode: "value", direction: "default" });
-    setRoundIndex(nextRoundIndex);
 
     setLevelState({ rank: activeLevel, teamLevels: nextTeamLevels });
 
@@ -1457,7 +1497,8 @@ const GuanDan: React.FC = () => {
 
     setMessage(endMsg);
 
-    setTimeout(() => {
+    // 使用 ref 存储定时器，便于组件卸载时清理
+    roundEndTimerRef.current = setTimeout(() => {
       const nextStarter = finalOrder.length >= 4 ? finalOrder[3] : 0;
       startRound(
         roundIndex + 1,
@@ -1466,22 +1507,22 @@ const GuanDan: React.FC = () => {
         nextStarter,
         finalOrder,
       );
-    }, 1600);
+    }, GAME_CONSTANTS.ROUND_END_DELAY_MS);
   };
 
   const maybeFinishPlayer = (playerId: number, nextPlayers: Player[]) => {
     if (nextPlayers[playerId].cards.length !== 0) return;
-    setFinishedOrder((prev) => {
-      if (prev.includes(playerId)) return prev;
-      const nextOrder = [...prev, playerId];
+    setRoundState((prev) => {
+      if (prev.finishedOrder.includes(playerId)) return prev;
+      const nextOrder = [...prev.finishedOrder, playerId];
       if (nextOrder.length >= 3) {
         const remaining = [0, 1, 2, 3].find((pid) => !nextOrder.includes(pid));
         const finalOrder =
           remaining !== undefined ? [...nextOrder, remaining] : nextOrder;
         setTimeout(() => endRound(finalOrder), 250);
-        return finalOrder;
+        return { ...prev, finishedOrder: finalOrder };
       }
-      return nextOrder;
+      return { ...prev, finishedOrder: nextOrder };
     });
   };
 
@@ -1772,711 +1813,6 @@ const GuanDan: React.FC = () => {
     handlePlay(0, selected);
   };
 
-  const playsByAI = (hand: Card[], last: Card[]): Card[] | null => {
-    if (hand.length === 0) return null;
-
-    // 1. 分析手牌结构
-    const wildcards = hand.filter((c) => c.isWild);
-    const normal = hand.filter((c) => !c.isWild);
-    const groups: Record<number, Card[]> = {};
-    normal.forEach((c) => {
-      groups[c.value] = groups[c.value] || [];
-      groups[c.value].push(c);
-    });
-    const sortedValues = Object.keys(groups)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    // 辅助：查找指定数量的牌（支持逢人配）
-    const findCards = (
-      val: number,
-      count: number,
-      wildsToUse: Card[],
-    ): Card[] | null => {
-      const current = groups[val] || [];
-      const needed = count - current.length;
-      if (needed <= 0) return current.slice(0, count);
-      if (wildsToUse.length >= needed) {
-        return [...current, ...wildsToUse.slice(0, needed)];
-      }
-      return null;
-    };
-
-    // ========== 炸弹分析 ==========
-    interface BombInfo {
-      cards: Card[];
-      value: number;
-      baseValue: number; // 炸弹的点数（不含炸弹类型权重）
-      isValuable: boolean; // A炸/级牌炸/四王炸
-    }
-
-    const analyzeBombs = (): BombInfo[] => {
-      const bombs: BombInfo[] = [];
-
-      // 普通炸弹（4张及以上）
-      for (const v of sortedValues) {
-        const count = groups[v].length;
-        if (count >= 4) {
-          // 纯炸弹（不用配）
-          const bombCards = groups[v].slice(0, count);
-          const bombValue =
-            (count === 4
-              ? 4000
-              : count === 5
-                ? 5000
-                : count === 6
-                  ? 6000
-                  : count === 7
-                    ? 7000
-                    : 8000) + v;
-          const isValuable = v >= 14 || v === levelCardValue; // A及以上或级牌
-          bombs.push({
-            cards: bombCards,
-            value: bombValue,
-            baseValue: v,
-            isValuable,
-          });
-        } else if (count >= 1 && count + wildcards.length >= 4) {
-          // 需要配的4炸
-          const neededWilds = 4 - count;
-          if (wildcards.length >= neededWilds) {
-            const bombCards = [
-              ...groups[v],
-              ...wildcards.slice(0, neededWilds),
-            ];
-            const isValuable = v >= 14 || v === levelCardValue;
-            bombs.push({
-              cards: bombCards,
-              value: 4000 + v,
-              baseValue: v,
-              isValuable,
-            });
-          }
-        }
-      }
-
-      // 四王炸
-      const jokers = hand.filter(
-        (c) => c.rank === "joker" || c.rank === "JOKER",
-      );
-      if (jokers.length === 4) {
-        bombs.push({
-          cards: jokers,
-          value: 20000,
-          baseValue: 17,
-          isValuable: true,
-        });
-      }
-
-      return bombs;
-    };
-
-    const allBombs = analyzeBombs();
-    const smallBombs = allBombs.filter(
-      (b) => !b.isValuable && b.baseValue < 10,
-    );
-    const valuableBombs = allBombs.filter((b) => b.isValuable);
-
-    // ========== 0. 残局最优解 (Endgame Solver) ==========
-    if (last.length === 0 && hand.length <= 6) {
-      // 1. 尝试一次出完
-      if (getGDType(hand, levelCardValue)) return hand;
-
-      // 2. 尝试 "控制牌 + 任意牌" 组合 (Control + Rest)
-      // 如果我有炸弹，且除去炸弹后的牌能一次出完，则先出剩下的牌（保留炸弹兜底）
-      for (const bomb of allBombs) {
-        // 排除炸弹使用的牌
-        const bombCardIds = new Set(bomb.cards.map((c) => c.id));
-        const restCards = hand.filter((c) => !bombCardIds.has(c.id));
-
-        // 如果剩余牌是合法牌型
-        if (restCards.length > 0 && getGDType(restCards, levelCardValue)) {
-          // 策略：先出 Rest，保留 Bomb 拿回牌权
-          return restCards;
-        }
-      }
-    }
-
-    // ========== 牌型候选分析 ==========
-    interface PlayCandidate {
-      type: string;
-      cards: Card[];
-      priority: number; // 优先分数（越高越优先）
-      maxValue: number;
-    }
-
-    const candidates: PlayCandidate[] = [];
-
-    // A. 顺子分析
-    const findAllStraights = (): { cards: Card[]; maxValue: number }[] => {
-      const straights: { cards: Card[]; maxValue: number }[] = [];
-      for (let start = 3; start <= 10; start++) {
-        const wilds = [...wildcards];
-        let cards: Card[] = [];
-        let possible = true;
-        for (let i = 0; i < 5; i++) {
-          const val = start + i;
-          if (val === levelCardValue) {
-            possible = false;
-            break;
-          }
-          const found = findCards(val, 1, wilds);
-          if (found) {
-            cards = [...cards, ...found];
-            found.forEach((c) => {
-              if (c.isWild) {
-                const idx = wilds.indexOf(c);
-                if (idx > -1) wilds.splice(idx, 1);
-              }
-            });
-          } else {
-            possible = false;
-            break;
-          }
-        }
-        if (possible) straights.push({ cards, maxValue: start + 4 });
-      }
-      return straights;
-    };
-
-    // B. 钢板分析
-    const findAllSteelPlates = (): { cards: Card[]; maxValue: number }[] => {
-      const plates: { cards: Card[]; maxValue: number }[] = [];
-      for (let i = 0; i < sortedValues.length - 1; i++) {
-        const v1 = sortedValues[i];
-        const v2 = sortedValues[i + 1];
-        if (v2 === v1 + 1 && v1 !== levelCardValue && v2 !== levelCardValue) {
-          const w = [...wildcards];
-          const c1 = findCards(v1, 3, w);
-          if (c1) {
-            const wRemaining = w.filter((x) => !c1.includes(x));
-            const c2 = findCards(v2, 3, wRemaining);
-            if (c2) plates.push({ cards: [...c1, ...c2], maxValue: v2 });
-          }
-        }
-      }
-      return plates;
-    };
-
-    // C. 连对分析
-    const findAllConsecutivePairs = (): {
-      cards: Card[];
-      maxValue: number;
-    }[] => {
-      const pairs: { cards: Card[]; maxValue: number }[] = [];
-      for (let i = 0; i < sortedValues.length - 2; i++) {
-        const v1 = sortedValues[i];
-        if (sortedValues[i + 1] === v1 + 1 && sortedValues[i + 2] === v1 + 2) {
-          const v2 = v1 + 1,
-            v3 = v1 + 2;
-          if ([v1, v2, v3].includes(levelCardValue)) continue;
-          const w = [...wildcards];
-          const c1 = findCards(v1, 2, w);
-          if (c1) {
-            const w2 = w.filter((x) => !c1.includes(x));
-            const c2 = findCards(v2, 2, w2);
-            if (c2) {
-              const w3 = w2.filter((x) => !c2.includes(x));
-              const c3 = findCards(v3, 2, w3);
-              if (c3)
-                pairs.push({ cards: [...c1, ...c2, ...c3], maxValue: v3 });
-            }
-          }
-        }
-      }
-      return pairs;
-    };
-
-    // D. 三带二分析
-    const findAllFullHouses = (): { cards: Card[]; tripleValue: number }[] => {
-      const houses: { cards: Card[]; tripleValue: number }[] = [];
-      for (const v of sortedValues) {
-        const w = [...wildcards];
-        const triple = findCards(v, 3, w);
-        if (triple) {
-          const w2 = w.filter((x) => !triple.includes(x));
-          for (const pVal of sortedValues) {
-            if (pVal === v) continue;
-            const pair = findCards(pVal, 2, w2);
-            if (pair) {
-              houses.push({ cards: [...triple, ...pair], tripleValue: v });
-              break;
-            }
-          }
-        }
-      }
-      return houses;
-    };
-
-    // E. 三张分析
-    const findAllTriples = (): { cards: Card[]; value: number }[] => {
-      const triples: { cards: Card[]; value: number }[] = [];
-      for (const v of sortedValues) {
-        const tri = findCards(v, 3, [...wildcards]);
-        if (tri) triples.push({ cards: tri, value: v });
-      }
-      return triples;
-    };
-
-    // F. 对子分析
-    const findAllPairs = (): { cards: Card[]; value: number }[] => {
-      const pairs: { cards: Card[]; value: number }[] = [];
-      for (const v of sortedValues) {
-        // 规则：逢人配不能配王
-        if ((v === 16 || v === 17) && (groups[v]?.length || 0) < 2) continue;
-        const pair = findCards(v, 2, [...wildcards]);
-        if (pair) pairs.push({ cards: pair, value: v });
-      }
-      return pairs;
-    };
-
-    // 2. 主动出牌逻辑 (Leading) - 动态优先级
-    if (last.length === 0) {
-      const straights = findAllStraights();
-      const steelPlates = findAllSteelPlates();
-      const consecutivePairs = findAllConsecutivePairs();
-      const fullHouses = findAllFullHouses();
-      const triples = findAllTriples();
-      const pairs = findAllPairs();
-
-      // 计算优先级：数量多 + 大牌加分
-      // 顺子
-      straights.forEach((s) => {
-        let priority = straights.length * 2; // 数量越多优先级越高
-        if (s.maxValue >= 14) priority += 3; // 大牌加分（更容易回收出牌权）
-        candidates.push({
-          type: "straight",
-          cards: s.cards,
-          priority,
-          maxValue: s.maxValue,
-        });
-      });
-
-      // 钢板
-      steelPlates.forEach((s) => {
-        let priority = steelPlates.length * 2 + 1; // 钢板基础分略高
-        if (s.maxValue >= 14) priority += 3;
-        candidates.push({
-          type: "steel_plate",
-          cards: s.cards,
-          priority,
-          maxValue: s.maxValue,
-        });
-      });
-
-      // 连对
-      consecutivePairs.forEach((s) => {
-        let priority = consecutivePairs.length * 2;
-        if (s.maxValue >= 14) priority += 3;
-        candidates.push({
-          type: "consecutive_pairs",
-          cards: s.cards,
-          priority,
-          maxValue: s.maxValue,
-        });
-      });
-
-      // 三带二
-      fullHouses.forEach((s) => {
-        let priority = fullHouses.length * 2;
-        // 级牌(value=15)和大牌(A, 王)应该保留
-        if (s.tripleValue === 15) {
-          priority -= 3;
-        } else if (s.tripleValue >= 14) {
-          priority -= 2; // A的葫芦也应该保留
-        }
-        candidates.push({
-          type: "fullhouse",
-          cards: s.cards,
-          priority,
-          maxValue: s.tripleValue,
-        });
-      });
-
-      // 三张
-      triples.forEach((s) => {
-        let priority = triples.length;
-        // 级牌(value=15)和大牌(A, 王)应该保留
-        if (s.value === 15) {
-          priority -= 3;
-        } else if (s.value >= 14) {
-          priority -= 2; // A的三张也应该保留
-        }
-        candidates.push({
-          type: "triple",
-          cards: s.cards,
-          priority,
-          maxValue: s.value,
-        });
-      });
-
-      // 对子
-      pairs.forEach((s) => {
-        let priority = pairs.length * 0.5;
-        // 级牌(value=15)和大牌(A, 王)应该保留
-        if (s.value === 15) {
-          priority -= 3;
-        } else if (s.value >= 14) {
-          priority -= 2; // A的对子也应该保留
-        }
-        candidates.push({
-          type: "pair",
-          cards: s.cards,
-          priority,
-          maxValue: s.value,
-        });
-      });
-
-      // 按优先级排序，优先出分数高的牌型
-      candidates.sort((a, b) => {
-        if (b.priority !== a.priority) return b.priority - a.priority;
-        // 同优先级时，出小牌（留大牌）
-        return a.maxValue - b.maxValue;
-      });
-
-      // 返回最优牌型
-      if (candidates.length > 0) {
-        return candidates[0].cards;
-      }
-
-      // 残局检测：如果手里全是单牌（没有任何对子、三张等组合），从大到小出
-      const isAllSingles = sortedValues.every((v) => groups[v].length === 1);
-      if (isAllSingles && hand.length <= 10) {
-        // 残局只剩单牌时，从大到小出（先出大牌压制）
-        const highestValue = sortedValues[sortedValues.length - 1];
-        if (highestValue !== undefined) {
-          return [groups[highestValue][0]];
-        }
-      }
-
-      // 兜底：单张（最小）
-      return [
-        sortedValues.length > 0 ? groups[sortedValues[0]][0] : wildcards[0],
-      ];
-    }
-
-    // 3. 跟牌逻辑
-    const lastType = getGDType(last, levelCardValue);
-    if (!lastType) return null;
-
-    const isTeammate =
-      lastPlayerId !== -1 && (currentPlayer + 2) % 4 === lastPlayerId;
-
-    // 团队合作：如果队友目前是最大牌
-    if (isTeammate) {
-      const teammateId = lastPlayerId;
-      const teammateHandCount = players[teammateId].cards.length;
-      // 接风逻辑：队友牌多（>15），出的牌小（<10），说明可能在求过渡
-      const isWeakPlay =
-        lastType.value < 10 &&
-        (lastType.type === "single" || lastType.type === "pair");
-      const teammateStruggling = teammateHandCount > 15;
-
-      if (isWeakPlay && teammateStruggling) {
-        // 尝试用较大的牌接风（> Q）
-        if (lastType.type === "single") {
-          for (const v of sortedValues) {
-            if (v >= 12 && v > lastType.value && groups[v].length === 1) {
-              return [groups[v][0]];
-            }
-          }
-        }
-        if (lastType.type === "pair") {
-          for (const v of sortedValues) {
-            if (v >= 12 && v > lastType.value && groups[v].length === 2) {
-              return groups[v].slice(0, 2);
-            }
-          }
-        }
-      }
-      return null;
-    }
-
-    // 检查对手是否连续出牌（用于拦截判断）
-    const opponentId = lastPlayerId;
-    const opponentConsecutivePlays =
-      opponentId >= 0 ? consecutivePlayCounts[opponentId] || 0 : 0;
-    const shouldIntercept = opponentConsecutivePlays >= 2; // 连续出2手以上考虑拦截
-
-    // ===== 新增：队友保护策略 =====
-    // 检查对手剩余手牌数量
-    const opponentCards =
-      opponentId >= 0 ? players[opponentId]?.cards.length || 27 : 27;
-    const needTeammateProtection = opponentCards < 10; // 对手手牌少于10张需要积级压制
-
-    // 检查是否是"后位队友"（passCount > 0 说明有人过牌了，可能是队友）
-    const isSecondTeammate = passCount >= 1 && !isTeammate;
-
-    // 队友保护模式：对手快出完了，需要积级压制
-    const aggressiveMode = needTeammateProtection && isSecondTeammate;
-
-    // ===== 新增：级牌保守策略 =====
-    // 前期（手牌多）不轻易用级牌压对手，除非对手快出完
-    const isEarlyGame = hand.length > 15;
-    const shouldConserveWildcards = isEarlyGame && !needTeammateProtection;
-
-    // 3. 智能拆牌预计算 - 标记所有组合牌
-    const comboIds = new Set<string>();
-    [
-      ...findAllStraights(),
-      ...findAllSteelPlates(),
-      ...findAllConsecutivePairs(),
-    ].forEach((s) => s.cards.forEach((c) => comboIds.add(c.id)));
-
-    // A. 单张 - 优先出散牌，不拆对子/三张/炸弹
-    if (lastType.type === "single") {
-      // 1. 散牌且Free
-      for (const v of sortedValues) {
-        if (v > lastType.value && groups[v].length === 1) {
-          const free = groups[v].find((c) => !comboIds.has(c.id));
-          if (free) {
-            if (isTeammate && v >= 14) continue;
-            return [free];
-          }
-        }
-      }
-      // 2. 拆对子(Free)
-      for (const v of sortedValues) {
-        if (v > lastType.value && groups[v].length === 2) {
-          const free = groups[v].find((c) => !comboIds.has(c.id));
-          if (free) {
-            if (isTeammate && v >= 14) continue;
-            return [free];
-          }
-        }
-      }
-      // 3. 兜底：拆任何单/对/三
-      for (const v of sortedValues) {
-        if (
-          v > lastType.value &&
-          (groups[v].length === 1 ||
-            groups[v].length === 2 ||
-            groups[v].length === 3)
-        ) {
-          if (isTeammate && v >= 14) continue;
-          // 不要用大牌（A、级牌、王）压小牌（<10），除非激进模式或残局
-          const isEndGame = hand.length <= 10;
-          if (v >= 14 && lastType.value < 10 && !aggressiveMode && !isEndGame) {
-            continue; // 跳过大牌，选择过牌
-          }
-          return [groups[v][0]];
-        }
-      }
-
-      // 级牌单打
-      if (wildcards.length > 0 && 15 > lastType.value) {
-        if (!isTeammate && (!shouldConserveWildcards || aggressiveMode)) {
-          return [wildcards[0]];
-        }
-      }
-    }
-
-    // B. 对子
-    if (lastType.type === "pair") {
-      // 1. 对子且Free
-      for (const v of sortedValues) {
-        if (v > lastType.value && groups[v].length === 2) {
-          const free = groups[v].filter((c) => !comboIds.has(c.id));
-          if (free.length >= 2) {
-            if (isTeammate && v >= 14) continue;
-            return free.slice(0, 2);
-          }
-        }
-      }
-      // 2. 三张拆对(Free)
-      for (const v of sortedValues) {
-        if (v > lastType.value && groups[v].length === 3) {
-          const free = groups[v].filter((c) => !comboIds.has(c.id));
-          if (free.length >= 2) {
-            if (isTeammate && v >= 14) continue;
-            return free.slice(0, 2);
-          }
-        }
-      }
-      // 3. 兜底
-      for (const v of sortedValues) {
-        if (
-          v > lastType.value &&
-          (groups[v].length === 2 || groups[v].length === 3)
-        ) {
-          if (isTeammate && v >= 14) continue;
-          return groups[v].slice(0, 2);
-        }
-      }
-    }
-
-    // C. 三张
-    if (lastType.type === "triple") {
-      // 1. 三张且Free
-      for (const v of sortedValues) {
-        if (v > lastType.value && groups[v].length === 3) {
-          const free = groups[v].filter((c) => !comboIds.has(c.id));
-          if (free.length >= 3) {
-            if (isTeammate && v >= 14) continue;
-            return free.slice(0, 3);
-          }
-        }
-      }
-      // 2. 兜底
-      for (const v of sortedValues) {
-        if (v > lastType.value && groups[v].length === 3) {
-          if (isTeammate && v >= 14) continue;
-          return groups[v].slice(0, 3);
-        }
-      }
-    }
-
-    // D. 三带二
-    if (lastType.type === "fullhouse") {
-      for (const v of sortedValues) {
-        if (v > lastType.value) {
-          if (isTeammate && v >= 14) continue;
-          const w = [...wildcards];
-          const triple = findCards(v, 3, w);
-          if (triple) {
-            const w2 = w.filter((x) => !triple.includes(x));
-            for (const pVal of sortedValues) {
-              if (pVal === v) continue;
-              const pair = findCards(pVal, 2, w2);
-              if (pair) return [...triple, ...pair];
-            }
-          }
-        }
-      }
-    }
-
-    // E. 顺子
-    if (lastType.type === "straight") {
-      const len = 5;
-      const minStart = (lastType.baseValue ?? 0) - len + 2;
-      for (let start = minStart; start <= 10; start++) {
-        if (start + len - 1 <= (lastType.baseValue ?? 0)) continue;
-        if (isTeammate && start + len - 1 >= 14) continue;
-        const w = [...wildcards];
-        let cards: Card[] = [];
-        let possible = true;
-        for (let i = 0; i < len; i++) {
-          const val = start + i;
-          if (val === levelCardValue) {
-            possible = false;
-            break;
-          }
-          const found = findCards(val, 1, w);
-          if (found) {
-            cards = [...cards, ...found];
-            found.forEach((c) => {
-              if (c.isWild) w.splice(w.indexOf(c), 1);
-            });
-          } else {
-            possible = false;
-            break;
-          }
-        }
-        if (possible) return cards;
-      }
-    }
-
-    // F. 连对
-    if (lastType.type === "consecutive_pairs") {
-      for (let i = 0; i < sortedValues.length - 2; i++) {
-        const v1 = sortedValues[i];
-        if (v1 + 2 > lastType.value) {
-          if (isTeammate && v1 + 2 >= 14) continue;
-          const v2 = v1 + 1,
-            v3 = v1 + 2;
-          if ([v1, v2, v3].includes(levelCardValue)) continue;
-          const w = [...wildcards];
-          const c1 = findCards(v1, 2, w);
-          if (c1) {
-            const w2 = w.filter((x) => !c1.includes(x));
-            const c2 = findCards(v2, 2, w2);
-            if (c2) {
-              const w3 = w2.filter((x) => !c2.includes(x));
-              const c3 = findCards(v3, 2, w3);
-              if (c3) return [...c1, ...c2, ...c3];
-            }
-          }
-        }
-      }
-    }
-
-    // G. 炸弹策略
-    if (allBombs.length > 0) {
-      const validBombs = allBombs.filter((b) =>
-        canBeat(b.cards, last, levelCardValue),
-      );
-
-      if (validBombs.length > 0) {
-        if (isTeammate) return null;
-
-        // 1. 如果上家是炸弹，必须炸（选最小的能管上的）
-        if (isBomb(lastType.type)) {
-          validBombs.sort((a, b) => a.value - b.value);
-          return validBombs[0].cards;
-        }
-
-        // 2. 队友保护模式：对手快出完了，允许用任何炸弹压制
-        if (aggressiveMode) {
-          // 优先用小炸弹
-          const validSmallBombs = smallBombs.filter((b) =>
-            canBeat(b.cards, last, levelCardValue),
-          );
-          if (validSmallBombs.length > 0) {
-            validSmallBombs.sort((a, b) => a.value - b.value);
-            return validSmallBombs[0].cards;
-          }
-          // 小炸弹不够用大炸弹
-          const validValuableBombs = valuableBombs.filter((b) =>
-            canBeat(b.cards, last, levelCardValue),
-          );
-          if (validValuableBombs.length > 0) {
-            validValuableBombs.sort((a, b) => a.value - b.value);
-            return validValuableBombs[0].cards;
-          }
-        }
-
-        // 3. 拦截逻辑：对手连续出牌 >= 2 次，用小炸弹拦截
-        if (shouldIntercept && smallBombs.length > 0) {
-          const validSmallBombs = smallBombs.filter((b) =>
-            canBeat(b.cards, last, levelCardValue),
-          );
-          if (validSmallBombs.length > 0) {
-            validSmallBombs.sort((a, b) => a.value - b.value);
-            return validSmallBombs[0].cards;
-          }
-        }
-
-        // 4. 残局策略：手牌少时可以用炸弹
-        const isEndGame = hand.length <= 10;
-        const isUrgent = lastType.value >= 14; // 大牌需要拦截
-
-        if (isEndGame || isUrgent) {
-          // 优先用小炸弹
-          const validSmallBombs = smallBombs.filter((b) =>
-            canBeat(b.cards, last, levelCardValue),
-          );
-          if (validSmallBombs.length > 0) {
-            validSmallBombs.sort((a, b) => a.value - b.value);
-            return validSmallBombs[0].cards;
-          }
-
-          // 只有在级端紧急时才用大炸弹（手牌 <= 5 或对方出 A 及以上）
-          if (hand.length <= 5 || lastType.value >= 14) {
-            const validValuableBombs = valuableBombs.filter((b) =>
-              canBeat(b.cards, last, levelCardValue),
-            );
-            if (validValuableBombs.length > 0) {
-              validValuableBombs.sort((a, b) => a.value - b.value);
-              return validValuableBombs[0].cards;
-            }
-          }
-        }
-      }
-    }
-
-    return null;
-  };
-
   // 轮到玩家出牌时，清除该玩家上一轮的动作显示
   useEffect(() => {
     if (gamePhase === "playing") {
@@ -2496,7 +1832,23 @@ const GuanDan: React.FC = () => {
 
     const timer = setTimeout(() => {
       const hand = players[currentPlayer]?.cards || [];
-      let move = playsByAI(hand, lastPlayedCards);
+      // 使用提取的 AI 函数
+      const aiContext = {
+        currentPlayer,
+        lastPlayerId,
+        players,
+        passCount,
+        consecutivePlayCounts,
+        levelCardValue,
+      };
+      let move = gdPlaysByAI(
+        hand,
+        lastPlayedCards,
+        aiContext,
+        getGDType,
+        canBeat,
+        isBomb,
+      );
 
       // 兜底逻辑：如果是头家出牌（Leading）且AI未找到有效牌型，强制出最小的一张牌
       if (
@@ -2514,9 +1866,12 @@ const GuanDan: React.FC = () => {
       } else {
         handlePass(currentPlayer);
       }
-    }, 900);
+    }, GAME_CONSTANTS.AI_PLAY_DELAY_MS);
 
     return () => clearTimeout(timer);
+    // 注意：handlePlay, handlePass, playsByAI, consecutivePlayCounts 在组件内部定义，
+    // 依赖于其他状态，此处省略以避免无限循环。players 变化时会触发重新评估。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     gamePhase,
     currentPlayer,
@@ -2550,7 +1905,10 @@ const GuanDan: React.FC = () => {
   return (
     <div className="game-container-gd">
       {showRules && (
-        <div className="modal-overlay" onClick={() => setShowRules(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setModals((prev) => ({ ...prev, showRules: false }))}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">规则与牌型</h2>
             <div className="modal-body">
@@ -2568,7 +1926,7 @@ const GuanDan: React.FC = () => {
                 </div>
                 <div className="rule-item">
                   <span className="rule-label">轮数</span>
-                  <div className="rule-cards">每场 4 轮，轮末自动结算级牌</div>
+                  <div className="rule-cards">每场 7 轮，轮末自动结算级牌</div>
                 </div>
 
                 <div className="rule-title">提示</div>
@@ -2862,7 +2220,9 @@ const GuanDan: React.FC = () => {
             </div>
             <button
               className="btn btn-primary close-btn"
-              onClick={() => setShowRules(false)}
+              onClick={() =>
+                setModals((prev) => ({ ...prev, showRules: false }))
+              }
             >
               关闭
             </button>
@@ -2877,7 +2237,9 @@ const GuanDan: React.FC = () => {
               <h2>积分表</h2>
               <button
                 className="btn btn-primary close-btn"
-                onClick={() => setShowScoreboard(false)}
+                onClick={() =>
+                  setModals((prev) => ({ ...prev, showScoreboard: false }))
+                }
               >
                 关闭
               </button>
@@ -2923,7 +2285,12 @@ const GuanDan: React.FC = () => {
 
         <div className="button-group top-left">
           {gamePhase === "init" && (
-            <button className="btn btn-home" onClick={() => setShowRules(true)}>
+            <button
+              className="btn btn-home"
+              onClick={() =>
+                setModals((prev) => ({ ...prev, showRules: true }))
+              }
+            >
               规则
             </button>
           )}
@@ -2933,14 +2300,18 @@ const GuanDan: React.FC = () => {
             <>
               <button
                 className="btn btn-home"
-                onClick={() => setShowRules(true)}
+                onClick={() =>
+                  setModals((prev) => ({ ...prev, showRules: true }))
+                }
                 title="规则"
               >
                 规则
               </button>
               <button
                 className="btn btn-purple"
-                onClick={() => setShowScoreboard(true)}
+                onClick={() =>
+                  setModals((prev) => ({ ...prev, showScoreboard: true }))
+                }
               >
                 积分表
               </button>
@@ -3013,65 +2384,37 @@ const GuanDan: React.FC = () => {
 
             <div className="top-player">
               {players[2] && (
-                <div
-                  className={`player-info ${currentPlayer === 2 ? "active" : ""} ${
-                    finishedOrder[0] === 2 ? "landlord" : ""
-                  } ${
+                <PlayerCard
+                  player={players[2]}
+                  isActive={currentPlayer === 2}
+                  isLandlord={finishedOrder[0] === 2}
+                  isWinner={false}
+                  isGameWinner={
                     gamePhase === "end" &&
                     winningTeamId !== null &&
                     players[2].teamId === winningTeamId
-                      ? "game-winner"
-                      : ""
-                  }`}
-                >
-                  <h3 className="player-name">{players[2].name}</h3>
-                  <p className="player-cards-count">
-                    剩余: {players[2].cards.length} 张
-                  </p>
-                  <p className="player-stats">
-                    出牌: {players[2].playCount || 0}
-                  </p>
-                  {gamePhase === "end" && players[2].cards.length > 0 && (
-                    <div className="remaining-cards">
-                      {players[2].cards.map((c) =>
-                        renderCard(c, false, false, "mini"),
-                      )}
-                    </div>
-                  )}
-                </div>
+                  }
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
               )}
             </div>
 
             <div className="side-player left">
               {players[1] && (
-                <div
-                  className={`player-info ${currentPlayer === 1 ? "active" : ""} ${
-                    finishedOrder[0] === 1 && roundLeaderId !== 1
-                      ? "winner"
-                      : ""
-                  } ${roundLeaderId === 1 ? "landlord" : ""} ${
+                <PlayerCard
+                  player={players[1]}
+                  isActive={currentPlayer === 1}
+                  isLandlord={roundLeaderId === 1}
+                  isWinner={finishedOrder[0] === 1 && roundLeaderId !== 1}
+                  isGameWinner={
                     gamePhase === "end" &&
                     winningTeamId !== null &&
                     players[1].teamId === winningTeamId
-                      ? "game-winner"
-                      : ""
-                  }`}
-                >
-                  <h3 className="player-name">{players[1].name}</h3>
-                  <p className="player-cards-count">
-                    剩余: {players[1].cards.length} 张
-                  </p>
-                  <p className="player-stats">
-                    出牌: {players[1].playCount || 0}
-                  </p>
-                  {gamePhase === "end" && players[1].cards.length > 0 && (
-                    <div className="remaining-cards">
-                      {players[1].cards.map((c) =>
-                        renderCard(c, false, false, "mini"),
-                      )}
-                    </div>
-                  )}
-                </div>
+                  }
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
               )}
             </div>
 
@@ -3139,32 +2482,19 @@ const GuanDan: React.FC = () => {
 
             <div className="side-player right">
               {players[3] && (
-                <div
-                  className={`player-info ${currentPlayer === 3 ? "active" : ""} ${
-                    finishedOrder[0] === 3 ? "landlord" : ""
-                  } ${
+                <PlayerCard
+                  player={players[3]}
+                  isActive={currentPlayer === 3}
+                  isLandlord={finishedOrder[0] === 3}
+                  isWinner={false}
+                  isGameWinner={
                     gamePhase === "end" &&
                     winningTeamId !== null &&
                     players[3].teamId === winningTeamId
-                      ? "game-winner"
-                      : ""
-                  }`}
-                >
-                  <h3 className="player-name">{players[3].name}</h3>
-                  <p className="player-cards-count">
-                    剩余: {players[3].cards.length} 张
-                  </p>
-                  <p className="player-stats">
-                    出牌: {players[3].playCount || 0}
-                  </p>
-                  {gamePhase === "end" && players[3].cards.length > 0 && (
-                    <div className="remaining-cards">
-                      {players[3].cards.map((c) =>
-                        renderCard(c, false, false, "mini"),
-                      )}
-                    </div>
-                  )}
-                </div>
+                  }
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
               )}
             </div>
           </div>
