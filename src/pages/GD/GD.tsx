@@ -561,21 +561,35 @@ const GuanDan: React.FC = () => {
   const myCards = players[0].cards;
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
 
-  const [sortMode, setSortMode] = useState<SortMode>("value");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("default");
-
-  const [levelRank, setLevelRank] = useState<LevelRank>("2");
-  const [teamLevels, setTeamLevels] = useState<Record<number, LevelRank>>({
-    0: "2",
-    1: "2",
+  // 排序选项（合并）
+  const [sortOptions, setSortOptions] = useState({
+    mode: "value" as SortMode,
+    direction: "default" as SortDirection,
   });
+  const sortMode = sortOptions.mode;
+  const sortDirection = sortOptions.direction;
+
+  // 级牌状态（合并）
+  const [levelState, setLevelState] = useState({
+    rank: "2" as LevelRank,
+    teamLevels: { 0: "2", 1: "2" } as Record<number, LevelRank>,
+  });
+  const levelRank = levelState.rank;
+  const teamLevels = levelState.teamLevels;
   const levelCardValue = 15;
 
-  // 滑动
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
-  const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
-  const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
+  // 拖拽状态（合并）
+  const [dragState, setDragState] = useState({
+    isDragging: false,
+    startIndex: null as number | null,
+    endIndex: null as number | null,
+    mode: "select" as "select" | "deselect",
+  });
+  const isDragging = dragState.isDragging;
+  const dragStartIndex = dragState.startIndex;
+  const dragEndIndex = dragState.endIndex;
+  const dragMode = dragState.mode;
+
   const dragEndIndexRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const sortFlipFromRectsRef = useRef<Record<string, DOMRect>>({});
@@ -714,12 +728,11 @@ const GuanDan: React.FC = () => {
             `抗贡成功！玩家${playerId + 1} 出示双大王：${jokers.map((j) => j.suit).join(" ")}`,
           );
           setTributeInfos((prev) =>
-            prev.map((t, idx) => ({
+            prev.map((t) => ({
               ...t,
               isAntiTribute: true,
               status: "anti_tribute_success",
-              // 单人双大王时，每个tribute各显示一张大王
-              antiTributeJokers: jokers[idx] ? [jokers[idx]] : undefined,
+              antiTributeJokers: t.payerId === playerId ? jokers : undefined,
             })),
           );
           // 5秒后开始下一轮
@@ -1055,12 +1068,10 @@ const GuanDan: React.FC = () => {
     setPlayerActions({}); // 清除桌面动作
     setPassCount(0);
     setFinishedOrder([]);
-    setSortMode("value");
-    setSortDirection("default");
+    setSortOptions({ mode: "value", direction: "default" });
     setRoundIndex(nextRoundIndex);
 
-    setTeamLevels(nextTeamLevels);
-    setLevelRank(activeLevel);
+    setLevelState({ rank: activeLevel, teamLevels: nextTeamLevels });
 
     // 进贡逻辑
     let nextPhase: "playing" | "tribute" = "playing";
@@ -1091,15 +1102,14 @@ const GuanDan: React.FC = () => {
   const toggleSortMode = () => {
     captureSortFlipRects();
     const newMode = sortMode === "value" ? "suit" : "value";
-    setSortMode(newMode);
-    setSortDirection("default"); // 切换模式时重置为默认方向
+    setSortOptions({ mode: newMode, direction: "default" }); // 切换模式时重置为默认方向
     sortCards(newMode, "default");
   };
 
   const toggleSortDirection = () => {
     captureSortFlipRects();
     const nextDirection = sortDirection === "default" ? "reversed" : "default";
-    setSortDirection(nextDirection);
+    setSortOptions((prev) => ({ ...prev, direction: nextDirection }));
     sortCards(sortMode, nextDirection);
   };
 
@@ -1201,7 +1211,10 @@ const GuanDan: React.FC = () => {
         dragEndIndexRef.current = index;
         if (rafRef.current === null) {
           rafRef.current = requestAnimationFrame(() => {
-            setDragEndIndex(dragEndIndexRef.current);
+            setDragState((prev) => ({
+              ...prev,
+              endIndex: dragEndIndexRef.current,
+            }));
             rafRef.current = null;
           });
         }
@@ -1239,9 +1252,12 @@ const GuanDan: React.FC = () => {
       }
 
       // 重置状态
-      setIsDragging(false);
-      setDragStartIndex(null);
-      setDragEndIndex(null);
+      setDragState({
+        isDragging: false,
+        startIndex: null,
+        endIndex: null,
+        mode: "select",
+      });
     };
 
     window.addEventListener("pointerup", handleGlobalPointerUp);
@@ -1290,11 +1306,12 @@ const GuanDan: React.FC = () => {
           if (isSelectable && index !== -1) {
             e.preventDefault(); // 防止文本选择
             e.stopPropagation(); // 防止冒泡
-            setIsDragging(true);
-            setDragStartIndex(index);
-            setDragEndIndex(index);
-            // 如果当前已经选中，则模式为取消选中，否则为选中
-            setDragMode(isSelected ? "deselect" : "select");
+            setDragState({
+              isDragging: true,
+              startIndex: index,
+              endIndex: index,
+              mode: isSelected ? "deselect" : "select",
+            });
           }
         }}
         onPointerEnter={() => {
@@ -1303,7 +1320,10 @@ const GuanDan: React.FC = () => {
             dragEndIndexRef.current = index;
             if (rafRef.current === null) {
               rafRef.current = requestAnimationFrame(() => {
-                setDragEndIndex(dragEndIndexRef.current);
+                setDragState((prev) => ({
+                  ...prev,
+                  endIndex: dragEndIndexRef.current,
+                }));
                 rafRef.current = null;
               });
             }
@@ -1314,7 +1334,6 @@ const GuanDan: React.FC = () => {
         } ${displaySelected ? "selected" : ""} ${
           isSelectable ? "selectable" : ""
         }`}
-        style={{ touchAction: "none" }} // 防止触摸滚动
         data-index={index}
       >
         {isJoker ? (
@@ -1381,7 +1400,7 @@ const GuanDan: React.FC = () => {
       [firstTeam]: nextTeamLevel,
     };
 
-    setTeamLevels(nextTeamLevels);
+    setLevelState((prev) => ({ ...prev, teamLevels: nextTeamLevels }));
 
     // 记录本轮结束后的分数
     setScoreHistory((prev) => {
@@ -1537,10 +1556,9 @@ const GuanDan: React.FC = () => {
     setSelectedCards([]);
   };
 
-  // DEV: 测试双贡-分得大王 (每人一张，现在可以组合抗贡)
+  // 测试进贡
   const testDistributedJokers = () => {
-    // 1. 给玩家0发一张大王
-    const joker1: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j1" };
+    const joker1: Card = { suit: "🂿", rank: "joker", value: 16, id: "test-j1" };
     const paddingCards0 = Array.from({ length: 26 }, (_, i) => ({
       suit: "♠",
       rank: "3",
@@ -1549,15 +1567,15 @@ const GuanDan: React.FC = () => {
     }));
     const hand0 = [joker1, ...paddingCards0];
 
-    // 2. 给玩家2发一张大王
     const joker2: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j2" };
-    const paddingCards2 = Array.from({ length: 26 }, (_, i) => ({
+    const joker3: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j2" };
+    const paddingCards2 = Array.from({ length: 25 }, (_, i) => ({
       suit: "♠",
       rank: "3",
       value: 3,
       id: `test-pad2-${i}`,
     }));
-    const hand2 = [joker2, ...paddingCards2];
+    const hand2 = [joker2, joker3, ...paddingCards2];
 
     setPlayers((prev) => {
       const next = [...prev];
@@ -1566,7 +1584,7 @@ const GuanDan: React.FC = () => {
       return next;
     });
 
-    // 2. 设置双贡状态
+    // 设置双贡
     const tributes: TributeInfo[] = [
       {
         payerId: 0,
@@ -1583,7 +1601,7 @@ const GuanDan: React.FC = () => {
     ];
     setTributeInfos(tributes);
     setGamePhase("tribute");
-    setMessage("DEV: 已重置为双贡-大王分散场景 (现在可以组合抗贡)");
+    setMessage("DEV: 测试进贡");
   };
 
   const confirmTribute = () => {
@@ -2937,8 +2955,7 @@ const GuanDan: React.FC = () => {
         <div className="button-group top-right">
           <button
             onClick={() => navigate("/")}
-            className="btn btn-home"
-            style={{ marginBottom: gamePhase !== "init" ? "0.1rem" : "0" }}
+            className={`btn btn-home ${gamePhase !== "init" ? "btn-margin-bottom" : ""}`}
           >
             返回主页
           </button>
@@ -2946,19 +2963,13 @@ const GuanDan: React.FC = () => {
             <>
               <button
                 onClick={startMatch}
-                className="btn btn-red"
-                style={{ marginBottom: "0.1rem" }}
+                className="btn btn-red btn-margin-bottom"
               >
                 重新开始
               </button>
               <button
                 onClick={testDistributedJokers}
-                className="btn btn-primary"
-                style={{
-                  marginBottom: "0.1rem",
-                  fontSize: "0.8rem",
-                  padding: "0.4rem 1rem",
-                }}
+                className="btn btn-primary btn-margin-bottom btn-test"
               >
                 测试抗贡
               </button>
@@ -3073,76 +3084,40 @@ const GuanDan: React.FC = () => {
 
                 {gamePhase === "tribute" ? (
                   <div className="table-content tribute-area">
-                    <div
-                      className="tribute-list"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                        alignItems: "center",
-                      }}
-                    >
+                    <div className="tribute-list">
                       {tributeInfos.map((t, idx) => (
-                        <div
-                          key={idx}
-                          className="tribute-row"
-                          style={{
-                            background: "rgba(0,0,0,0.5)",
-                            padding: "8px",
-                            borderRadius: "8px",
-                            display: "flex",
-                            gap: "10px",
-                            alignItems: "center",
-                          }}
-                        >
+                        <div key={idx} className="tribute-row">
                           <span>
                             {players[t.payerId]?.name}{" "}
                             {t.isAntiTribute ? "抗贡" : "进贡"} ➜{" "}
                             {players[t.receiverId]?.name}
                           </span>
                           {t.payCard && (
-                            <div
-                              style={{
-                                transform: "scale(0.6)",
-                                margin: "-20px -10px",
-                              }}
-                            >
+                            <div className="tribute-card-preview">
                               {renderCard(t.payCard, false, false, "mini")}
                             </div>
                           )}
                           {t.returnCard && (
-                            <div
-                              style={{
-                                transform: "scale(0.6)",
-                                margin: "-20px -10px",
-                              }}
-                            >
+                            <div className="tribute-card-preview">
                               {renderCard(t.returnCard, false, false, "mini")}
                             </div>
                           )}
-                          {/* 显示抗贡用的大王 */}
+                          {/* 抗贡大王 */}
                           {t.antiTributeJokers &&
                             t.antiTributeJokers.length > 0 && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  transform: "scale(0.6)",
-                                  margin: "-20px -10px",
-                                }}
-                              >
+                              <div className="tribute-jokers-preview">
                                 {t.antiTributeJokers.map((joker) =>
                                   renderCard(joker, false, false, "mini"),
                                 )}
                               </div>
                             )}
                           <span
-                            style={{
-                              color:
-                                t.status === "done" ||
-                                t.status === "anti_tribute_success"
-                                  ? "#4caf50"
-                                  : "#ff9800",
-                            }}
+                            className={`tribute-status ${
+                              t.status === "done" ||
+                              t.status === "anti_tribute_success"
+                                ? "done"
+                                : "pending"
+                            }`}
                           >
                             {t.status === "pending_pay"
                               ? "待进贡"
@@ -3206,7 +3181,6 @@ const GuanDan: React.FC = () => {
                 ? "game-winner"
                 : ""
             }`}
-            style={{ position: "relative" }}
           >
             <div className="hand-header">
               <div className="hand-controls">
@@ -3296,7 +3270,7 @@ const GuanDan: React.FC = () => {
                         </div>
                       ))}
                   </div>
-                  <div className="hand-cards" style={{ marginTop: "-6rem" }}>
+                  <div className="hand-cards hand-cards-second-row">
                     {myCards
                       .slice(Math.ceil(myCards.length / 2))
                       .map((card, index) => (
