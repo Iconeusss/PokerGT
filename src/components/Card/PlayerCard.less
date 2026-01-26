@@ -1,4 +1,3 @@
-// PlayerCard.less
 @import "../../variables.less";
 
 // 胜利脉冲动画
@@ -12,7 +11,7 @@
   }
 }
 
-// 胜利呼吸动画 - 放大缩小效果
+// 胜利呼吸动画
 @keyframes winner-breathing {
   0%,
   100% {
@@ -40,7 +39,7 @@
   }
 }
 
-// 玩家信息卡片 (头像样式)
+// 玩家信息卡片 
 .player-info {
   background: rgba(0, 0, 0, 0.6);
   border-radius: 1rem;
@@ -59,7 +58,7 @@
     animation: winner-pulse 1.2s ease-in-out infinite;
   }
 
-  // 游戏结束时的胜利特效 - 黄框带高光 + 呼吸效果
+  // 终局胜利特效
   &.game-winner {
     border-color: #fbbf24 !important;
     box-shadow:
@@ -165,7 +164,7 @@
       }
 
       .card-bottom-right {
-        display: none; // Hide bottom right for space
+        display: none;
       }
 
       .joker-main-symbol {

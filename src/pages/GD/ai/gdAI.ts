@@ -1,7 +1,3 @@
-/**
- * 掼蛋 AI 出牌逻辑
- * 从 GD.tsx 提取
- */
 
 interface Card {
   suit: string;
@@ -70,6 +66,7 @@ type IsBombFunc = (type: string) => boolean;
  * @param canBeat 是否能压过函数
  * @param isBomb 是否为炸弹函数
  */
+
 export const playsByAI = (
   hand: Card[],
   last: Card[],
@@ -497,7 +494,7 @@ export const playsByAI = (
     }
     for (const v of sortedValues) {
       if (v > lastType.value && groups[v].length === 2) {
-        const free = groups[v].find((c) => !comboIds.has(c.id));
+        const free = groups[v].find((c) => !comboIds.has(c.id)); // 拆对子
         if (free) {
           if (isTeammate && v >= 14) continue;
           return [free];
@@ -512,7 +509,7 @@ export const playsByAI = (
           groups[v].length === 3)
       ) {
         if (isTeammate && v >= 14) continue;
-        const isEndGame = hand.length <= 10;
+        const isEndGame = hand.length <= 10;  // 任何牌型都拆
         if (v >= 14 && lastType.value < 10 && !aggressiveMode && !isEndGame) {
           continue;
         }

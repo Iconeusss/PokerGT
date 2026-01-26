@@ -398,7 +398,6 @@ const DouDiZhu: React.FC = () => {
     }
   }, [myCards]);
 
-  // 核心动作封装
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
     // const type = getDDZType(cardsToPlay);
     const newPlayers = [...players];
@@ -466,8 +465,8 @@ const DouDiZhu: React.FC = () => {
         } else if (score >= 20) {
           call = Math.random() > 0.4;
         }
-        callLandlord(call);
-      }, 1200);
+        callLandlord(call); 
+      }, 1200);  //AI叫地主
       return () => clearTimeout(timer);
     }
     if (gamePhase === "playing" && currentPlayer !== 0) {
@@ -480,7 +479,7 @@ const DouDiZhu: React.FC = () => {
         );
         if (aiCards) handlePlay(currentPlayer, aiCards);
         else handlePass(currentPlayer);
-      }, 1200);
+      }, 1200);  // AI出牌
       return () => clearTimeout(timer);
     }
   }, [gamePhase, currentPlayer, lastPlayedCards]);

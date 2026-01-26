@@ -34,7 +34,7 @@ export interface PlayerCardProps {
     index?: number,
   ) => React.ReactNode;
   className?: string;
-  reverseCards?: boolean; // 新增：是否反转卡牌显示顺序（对于右侧玩家可能有用）
+  reverseCards?: boolean; 
 }
 
 const PlayerCard: React.FC<PlayerCardProps> = ({

@@ -1,13 +1,11 @@
 @import "../../variables.less";
 
-// 全局重置，确保 padding 不会撑开容器宽度
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-// 确保父级节点也是全屏高度
 html,
 body,
 #root {
@@ -15,11 +13,10 @@ body,
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden; // 防止左右晃动
+  overflow-x: hidden; 
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-// 游戏容器
 .game-container-gd {
   min-height: 100vh;
   width: 100%;
@@ -347,7 +344,7 @@ body,
     left: 1rem;
     margin: 0;
     z-index: 100;
-    flex-direction: column; // Left buttons are vertical
+    flex-direction: column; 
   }
 }
 
@@ -472,7 +469,6 @@ body,
   }
 }
 
-// 底牌区域
 .base-cards-section {
   display: flex;
   justify-content: center;
@@ -509,7 +505,6 @@ body,
     background: rgba(255, 255, 255, 0.1);
   }
 
-  // 底牌使用小尺寸
   .card {
     width: @card-width-small;
     height: @card-height-small;
@@ -533,11 +528,10 @@ body,
   }
 }
 
-// 主游戏区域布局
 .game-area {
   position: relative;
   display: flex;
-  align-items: center; // 垂直居中对齐
+  align-items: center; 
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0;
@@ -545,8 +539,8 @@ body,
   flex: 1;
 
   @media (max-width: 768px) {
-    flex-direction: row; // 移动端改为行布局，允许换行
-    flex-wrap: nowrap; // 不换行
+    flex-direction: row; 
+    flex-wrap: nowrap; 
     align-items: center;
     justify-content: space-between;
     gap: 0.25rem;
@@ -566,11 +560,11 @@ body,
     order: 1;
     @media (max-width: 768px) {
       order: 1;
-      flex: 0 0 auto; // 移动端自适应宽度
-      width: 25%; // 限制宽度
+      flex: 0 0 auto; 
+      width: 25%; 
       max-width: 90px;
       padding: 0;
-      flex-direction: column; // 保持垂直排列，更紧凑
+      flex-direction: column; 
       margin-bottom: 0;
     }
   }
@@ -594,7 +588,6 @@ body,
   }
 }
 
-// 中间区域
 .center-area {
   flex: 1;
   min-width: 0;
@@ -605,11 +598,11 @@ body,
   justify-content: center;
   align-items: center;
   height: 100%;
-  border: 3px solid darkgray;
+  // border: 3px solid darkgray;
 
   @media (max-width: 768px) {
-    order: 2; // 在中间
-    flex: 1; // 占据剩余空间
+    order: 2; 
+    flex: 1; 
     width: auto;
     justify-content: center;
     padding-top: 0;
@@ -625,9 +618,6 @@ body,
   width: min(260px, 90%);
   z-index: 10;
 }
-
-// 玩家信息卡片 (头像样式)
-// 玩家信息卡片 (头像样式) - Moved to src/components/PlayerCard.less
 
 // 牌桌区域 (出牌展示)
 .table-area {
@@ -690,11 +680,11 @@ body,
   }
 
   .table-title {
-    display: none; // 隐藏旧的标题
+    display: none; 
   }
 
   .table-info {
-    display: none; // 隐藏旧的极牌信息
+    display: none; 
   }
 
   .table-cards {
@@ -710,12 +700,9 @@ body,
     // 启用容器查询，使卡牌随父容器宽度缩放
     container-type: inline-size;
     width: 90%;
-    // height: 90%; // 移除旧的高度限制
-    // margin-left: -1rem; // 移除旧的偏移
 
     @media (max-width: 768px) {
       width: 90%;
-      // height: auto; // 移除旧的高度hack
       margin-left: 0;
     }
 
@@ -1074,39 +1061,37 @@ body,
         border-color: #fbbf24;
       }
 
-      // 选中且悬停 (仅在支持悬停的设备上启用)
+      // 选中且悬停 
       @media (hover: hover) {
         &.selected:hover {
           transform: translateY(var(--selected-offset));
         }
       }
 
-      // 响应式：仅调整边距
       @media (max-width: 768px) {
         margin-left: 0;
       }
 
-      // 超小屏幕适配
+      // 超小屏幕
       @media (max-width: 500px) {
-        margin-left: 0; // 保持重叠度
-        --selected-offset: -0.8rem; // 调整移动端选中位移
+        margin-left: 0; 
+        --selected-offset: -0.8rem; 
 
         &.selected {
-          // transform 由变量控制
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 保持选中光晕
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
         }
       }
 
-      // 触摸设备适配 (禁用悬停)
+      // 触摸设备
       @media (hover: none), (pointer: coarse) {
         &:hover {
-          transform: translateY(0); // 明确设置为 0
-          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 恢复默认阴影
+          transform: translateY(0); 
+          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); 
         }
 
         &.selected:hover {
-          transform: translateY(var(--selected-offset)); // 保持选中状态位移
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 保持选中光晕
+          transform: translateY(var(--selected-offset)); 
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
         }
       }
     }

@@ -34,14 +34,14 @@ interface TributeInfo {
   payCard?: Card;
   returnCard?: Card;
   isAntiTribute: boolean;
-  antiTributeJokers?: Card[]; // 用于抗贡的大王牌
+  antiTributeJokers?: Card[]; // 抗贡
   status: "pending_pay" | "pending_return" | "done" | "anti_tribute_success";
 }
 
 type SortMode = "suit" | "value";
 type SortDirection = "default" | "reversed";
 
-// 游戏常量
+// 常量
 const GAME_CONSTANTS = {
   LEVEL_CARD_VALUE: 15,
   CARDS_PER_PLAYER: 27,
@@ -88,7 +88,6 @@ const rankValues: { [key: string]: number } = {
   JOKER: 17,
 };
 
-// 工具函数
 const createDeck = (suffix: string, deckCount: number): Card[] => {
   const deck: Card[] = [];
   for (let d = 0; d < deckCount; d++) {
@@ -195,7 +194,11 @@ const getGDType = (
 
   // 对子
   if (len === 2) {
-    if (freq[0]?.count === 2 || (freq[0]?.count === 1 && wildcardCount === 1)) {
+    if (
+      freq[0]?.count === 2 ||
+      (freq[0]?.count === 1 && wildcardCount === 1) ||
+      wildcardCount === 2
+    ) {
       const pairValue = freq[0]?.val || values[0];
       // 王对，但逢人配不能配王
       if ((pairValue === 16 || pairValue === 17) && wildcardCount > 0) {
@@ -418,6 +421,7 @@ const checkConsecutiveTriples = (
   );
 };
 
+// 比较
 const canBeat = (
   playedCards: Card[],
   lastCards: Card[],
@@ -488,9 +492,9 @@ const processCardsForRound = (cards: Card[], levelRank: LevelRank): Card[] => {
     let isWild = false;
 
     if (c.rank === levelRank) {
-      value = 15; // 级牌15 A14 小王16
+      value = 15; // A14 级牌15 小王16
       if (c.suit === "♥") {
-        isWild = true; // 只有红桃级牌是逢人配
+        isWild = true; // 万能
       }
     }
 
@@ -559,7 +563,7 @@ const GuanDan: React.FC = () => {
   const [consecutivePlayCounts, setConsecutivePlayCounts] = useState<
     Record<number, number>
   >({ 0: 0, 1: 0, 2: 0, 3: 0 });
-  // 玩家当前出牌动作状态（出牌或过牌）
+  // 玩家当前状态（出牌或过牌）
   const [playerActions, setPlayerActions] = useState<
     Record<number, { type: "play" | "pass"; cards?: Card[] }>
   >({});
@@ -635,12 +639,10 @@ const GuanDan: React.FC = () => {
     };
   }, []);
 
-  // 辅助函数：获取最大的非级牌
+  // 获取最大的非级牌
   const getMaxTributeCard = (cards: Card[], lvlRank: string): Card | null => {
-    // 排除级牌
     const candidates = cards.filter((c) => c.rank !== lvlRank);
-    if (candidates.length === 0) return null; // 理论上不太可能
-    // 降序排列
+    if (candidates.length === 0) return null;
     candidates.sort((a, b) => b.value - a.value);
     return candidates[0];
   };
@@ -667,16 +669,14 @@ const GuanDan: React.FC = () => {
         )
       ) {
         // 切换到游戏阶段
-        setMessage("进贡成功");
+        // setMessage("进贡成功");
         const timer = setTimeout(() => {
           // 显示下一轮信息
           const roundMsg = `第 ${roundIndex + 1} / 7 轮开始，当前级牌：${levelRank} (本方:${teamLevels[0]}, 对方:${teamLevels[1]})`;
           setMessage(roundMsg);
           setGamePhase("playing");
 
-          // 决定谁先出牌
-          // 规则：进贡完成后，贡最大牌的玩家先出
-          // 双贡时比较两张贡牌
+          // 决定谁先出牌 双贡时比较两张贡牌
           const doneTributes = tributeInfos.filter((t) => t.status === "done");
           if (doneTributes.length > 0) {
             let starterId = doneTributes[0].receiverId; // 默认值
@@ -692,13 +692,8 @@ const GuanDan: React.FC = () => {
               }
             });
 
-            if (maxPayerId !== -1) {
-              starterId = maxPayerId;
-            }
-
+            if (maxPayerId !== -1) starterId = maxPayerId;
             setCurrentPlayer(starterId);
-          } else {
-            // 如果全部抗贡，startRound已设置好先出玩家，这里不需要改变
           }
         }, 5000);
         return () => clearTimeout(timer);
@@ -706,13 +701,13 @@ const GuanDan: React.FC = () => {
       return;
     }
 
-    // 优先处理进贡（双贡时AI同时处理）
+    // 优先处理进贡
     if (pendingPayTributes.length > 0) {
       // 分离AI进贡和玩家进贡
       const aiPayTributes = pendingPayTributes.filter((t) => t.payerId !== 0);
       const humanPayTribute = pendingPayTributes.find((t) => t.payerId === 0);
 
-      // 检查是否有单个玩家有双大王（自动抗贡）
+      // 检查单个玩家双大王
       const checkSinglePlayerDoubleJoker = () => {
         for (const tribute of pendingPayTributes) {
           const p = players[tribute.payerId];
@@ -774,7 +769,7 @@ const GuanDan: React.FC = () => {
               antiTributeJokers: t.payerId === playerId ? jokers : undefined,
             })),
           );
-          // 5秒后开始下一轮
+          // 开始下一轮
           innerTimer = setTimeout(() => {
             setGamePhase("playing");
             setMessage("抗贡成功，游戏开始");
@@ -907,7 +902,7 @@ const GuanDan: React.FC = () => {
                 };
               }),
             );
-            // 5秒后开始下一轮 - 注意：这个内部 setTimeout 在组件卸载前会执行完毕
+            // 5秒后开始下一轮 (内部 setTimeout 在组件卸载前会执行完毕)
             // 因为外部 timer 只有 1 秒延迟，而内部需要额外 5 秒
             let innerTimer: ReturnType<typeof setTimeout> | null = null;
             innerTimer = setTimeout(() => {
@@ -961,7 +956,6 @@ const GuanDan: React.FC = () => {
       // 如果还有玩家需要进贡，等待玩家操作
       if (humanPayTribute) {
         setCurrentPlayer(0);
-        // 玩家需要手动点击确认进贡按钮
       }
       return;
     }
@@ -1053,8 +1047,8 @@ const GuanDan: React.FC = () => {
       // 双贡 - 不再预判抗贡，在进贡时检测
       const winner1 = prevOrder[0];
       const winner2 = prevOrder[1];
-      const loser1 = prevOrder[2]; // 第三
-      const loser2 = prevOrder[3]; // 第四
+      const loser1 = prevOrder[2];
+      const loser2 = prevOrder[3];
 
       // 4 -> 1
       tributes.push({
@@ -1098,7 +1092,6 @@ const GuanDan: React.FC = () => {
     setSelectedCards([]);
 
     setCurrentPlayer(startingPlayerId);
-    // 无论第几轮，leaderId 都重置为 -1
     setRoundState((prev) => ({ ...prev, leaderId: -1 }));
     setLastPlayedCards([]);
     setLastPlayerId(-1);
@@ -1234,7 +1227,7 @@ const GuanDan: React.FC = () => {
     }
   }, [myCards]);
 
-  // 处理触摸滑动
+  // 滑动选牌
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || dragStartIndex === null) return;
 
@@ -1418,17 +1411,12 @@ const GuanDan: React.FC = () => {
     const currentLevelIdx = levelSequence.indexOf(currentTeamLevel);
     // 判断是否超过A
     const nextLevelIdxRaw = currentLevelIdx + delta;
-    const maxLevelIdx = levelSequence.length - 1; // A 的索引是 length-1
-
-    // 如果超过了A (即 nextLevelIdxRaw > maxLevelIdx)，或者正好打过A?
-    // 规则："如果七轮内有一方获胜后级牌超过了A则直接获胜"
-    // 这意味着如果当前是A，然后赢了，就超过A。或者如果当前是K，赢了3级，也超过A。
+    const maxLevelIdx = levelSequence.length - 1; // A索引 length-1
 
     let isGameOver = false;
     let finalWinningTeam = -1;
 
     if (nextLevelIdxRaw > maxLevelIdx) {
-      // 超过A，直接获胜
       isGameOver = true;
       finalWinningTeam = firstTeam;
     }
@@ -1488,9 +1476,9 @@ const GuanDan: React.FC = () => {
 
       if (finalWinner !== -1) {
         setWinningTeamId(finalWinner);
-        setMessage(`7轮结束，${reason}，队伍${finalWinner + 1}获胜！`);
+        setMessage(`游戏结束，${reason}，队伍${finalWinner + 1}获胜！`);
       } else {
-        setMessage(`7轮结束，${reason}，平局！`);
+        setMessage(`游戏结束，${reason}，平局！`);
       }
       return;
     }
@@ -1560,9 +1548,7 @@ const GuanDan: React.FC = () => {
         ),
       );
 
-      // 添加牌到各玩家
-      // 贡牌 -> 接收者
-      // 还牌 -> 进贡者
+      // 添加牌到各玩家 贡牌 -> 接收者 还牌 -> 进贡者
       setPlayers((prev) => {
         const next = [...prev];
         const payerIndex = next.findIndex((p) => p.id === tribute.payerId);
@@ -1597,26 +1583,27 @@ const GuanDan: React.FC = () => {
     setSelectedCards([]);
   };
 
-  // 测试进贡
+  // 测试
   const testDistributedJokers = () => {
-    const joker1: Card = { suit: "🂿", rank: "joker", value: 16, id: "test-j1" };
+    const joker0: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j1" };
+    // const joker1: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j1" };
     const paddingCards0 = Array.from({ length: 26 }, (_, i) => ({
       suit: "♠",
       rank: "3",
       value: 3,
       id: `test-pad0-${i}`,
     }));
-    const hand0 = [joker1, ...paddingCards0];
+    const hand0 = [joker0, ...paddingCards0];
 
+    // const joker2: Card = { suit: "🂿", rank: "joker", value: 16, id: "test-j2" };
     const joker2: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j2" };
-    const joker3: Card = { suit: "🂿", rank: "JOKER", value: 17, id: "test-j2" };
     const paddingCards2 = Array.from({ length: 25 }, (_, i) => ({
       suit: "♠",
       rank: "3",
       value: 3,
       id: `test-pad2-${i}`,
     }));
-    const hand2 = [joker2, joker3, ...paddingCards2];
+    const hand2 = [joker2, ...paddingCards2];
 
     setPlayers((prev) => {
       const next = [...prev];
@@ -1625,7 +1612,7 @@ const GuanDan: React.FC = () => {
       return next;
     });
 
-    // 设置双贡
+    // 进贡
     const tributes: TributeInfo[] = [
       {
         payerId: 0,
@@ -1646,7 +1633,7 @@ const GuanDan: React.FC = () => {
   };
 
   const confirmTribute = () => {
-    // 优先处理玩家自己的进贡/还贡任务
+    // 优先处理玩家的进贡/还贡任务
     const activeTribute =
       tributeInfos.find(
         (t) =>
@@ -1659,7 +1646,7 @@ const GuanDan: React.FC = () => {
     if (!activeTribute) return;
 
     if (activeTribute.status === "pending_pay" && activeTribute.payerId === 0) {
-      // 规则：自动进贡最大的非级牌
+      // 自动进贡最大的非级牌
       const payCard = getMaxTributeCard(players[0].cards, levelRank);
       if (!payCard) {
         setMessage("没有可进贡的牌");
@@ -1881,7 +1868,7 @@ const GuanDan: React.FC = () => {
     levelCardValue,
   ]);
 
-  // 优先显示玩家自己的进贡/还贡任务
+  // 优先显示玩家进贡
   const activeTributeForUI =
     tributeInfos.find(
       (t) =>
@@ -1901,6 +1888,12 @@ const GuanDan: React.FC = () => {
   const isReturnPhase =
     activeTributeForUI?.status === "pending_return" &&
     activeTributeForUI.receiverId === 0;
+
+  // const getScreenOrientation = () => {
+  //   // if ()
+  // };
+  // console.log(screen.orientation);
+  // console.log(window.screen);
 
   return (
     <div className="game-container-gd">

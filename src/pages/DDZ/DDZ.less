@@ -1,13 +1,11 @@
 @import "../../variables.less";
 
-// 全局重置，确保 padding 不会撑开容器宽度
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-// 确保父级节点也是全屏高度
 html,
 body,
 #root {
@@ -15,11 +13,10 @@ body,
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden; // 防止左右晃动
+  overflow-x: hidden; 
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-// 游戏容器
 .game-container-ddz {
   min-height: 100vh;
   width: 100%;
@@ -43,11 +40,10 @@ body,
   flex-direction: column;
 }
 
-// 标题
 .game-title {
   font-size: 3rem;
   font-weight: 800;
-  color: #fbbf24; // 金色标题
+  color: #fbbf24; 
   text-align: center;
   margin-bottom: 0.5rem;
   text-shadow: @shadow-text;
@@ -167,12 +163,11 @@ body,
       overflow-y: auto;
       padding-right: 0.5rem;
 
-      // 隐藏滚动条
       &::-webkit-scrollbar {
         display: none;
       }
-      scrollbar-width: none; // Firefox
-      -ms-overflow-style: none; // IE 10+
+      scrollbar-width: none; 
+      -ms-overflow-style: none; 
 
       .rule-title {
         font-size: 1.2rem;
@@ -227,7 +222,7 @@ body,
   }
 }
 
-// 消息框 (Toast 风格)
+// 消息框
 .message-box {
   position: fixed;
   top: 64%;
@@ -240,7 +235,7 @@ body,
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(8px);
-  pointer-events: none; // 允许点击穿透
+  pointer-events: none;
   text-align: center;
   transition: all 0.3s ease;
   min-width: 200px;
@@ -254,7 +249,6 @@ body,
   }
 }
 
-// 按钮组
 .button-group {
   display: flex;
   justify-content: center;
@@ -268,14 +262,13 @@ body,
     margin: 0;
     z-index: 100;
     flex-direction: column;
-    align-items: flex-end; // 右对齐
+    align-items: flex-end;
   }
 }
 
-// 按钮样式
 .btn {
   padding: 0.6rem 2rem;
-  border-radius: 2rem; // 圆角按钮
+  border-radius: 2rem; 
   font-weight: 700;
   border: none;
   cursor: pointer;
@@ -570,12 +563,7 @@ body,
   }
 }
 
-// 玩家信息卡片 (头像样式)
-// 玩家信息卡片 (头像样式) - Moved to src/components/PlayerCard.less
-
-// 牌桌区域 (出牌展示)
 .table-area {
-  // 移除背景，让牌看起来在桌面上
   background: transparent;
   border-radius: @border-radius-large;
   padding: 1rem;
@@ -667,14 +655,11 @@ body,
 
       width: var(--final-width);
 
-      // 保持 5:7 的宽高比
       height: auto;
       aspect-ratio: 5 / 7;
       min-height: 4.5rem;
       max-height: 7rem;
 
-      // 自身属性必须使用变量计算 (因为 cqw 此时指向父容器)
-      // 系数 = 原数值 / 12
 
       border-radius: calc(~"var(--final-width) * 0.1"); // 1.2 / 12
       border-width: calc(~"var(--final-width) * 0.0167"); // 0.2 / 12
@@ -739,7 +724,6 @@ body,
 
 // 玩家手牌区域
 .player-hand {
-  // 移除手牌区域渐变背景，改为统一的半透明背景
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
   border-radius: 1rem;
@@ -748,8 +732,8 @@ body,
   position: sticky;
   bottom: 0;
   width: 100%;
-  margin-top: auto; // 推到底部
-  border: 2px solid rgba(255, 255, 255, 0.1); // 基础边框
+  margin-top: auto; 
+  border: 2px solid rgba(255, 255, 255, 0.1); 
 
   &.winner {
     border-color: #facc15 !important;
@@ -944,7 +928,7 @@ body,
         border-color: #fbbf24;
       }
 
-      // 选中且悬停 (仅在支持悬停的设备上启用)
+      // 选中且悬停
       @media (hover: hover) {
         &.selected:hover {
           transform: translateY(var(--selected-offset));
@@ -952,24 +936,23 @@ body,
       }
 
       @media (max-width: 500px) {
-        --selected-offset: -0.8rem; // 调整移动端选中位移
+        --selected-offset: -0.8rem; 
 
         &.selected {
-          // transform 由变量控制
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 保持选中光晕
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
         }
       }
 
-      // 触摸设备适配 (禁用悬停)
+      // 触摸设备
       @media (hover: none), (pointer: coarse) {
         &:hover {
-          transform: translateY(0); // 明确设置为 0
-          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); // 恢复默认阴影
+          transform: translateY(0); 
+          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); 
         }
 
         &.selected:hover {
-          transform: translateY(var(--selected-offset)); // 保持选中状态位移
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); // 保持选中光晕
+          transform: translateY(var(--selected-offset)); 
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
         }
       }
     }
