@@ -13,7 +13,7 @@ body,
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden; 
+  overflow-x: hidden;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -29,6 +29,9 @@ body,
   color: @color-text-light;
   display: flex;
   flex-direction: column;
+
+  // 卡背颜色 - 绿色系
+  --card-back-gradient: linear-gradient(135deg, #1a4d2e 0%, #0d3320 100%);
 }
 
 .game-wrapper {
@@ -43,7 +46,7 @@ body,
 .game-title {
   font-size: 3rem;
   font-weight: 800;
-  color: #fbbf24; 
+  color: #fbbf24;
   text-align: center;
   margin-bottom: 0.5rem;
   text-shadow: @shadow-text;
@@ -166,8 +169,8 @@ body,
       &::-webkit-scrollbar {
         display: none;
       }
-      scrollbar-width: none; 
-      -ms-overflow-style: none; 
+      scrollbar-width: none;
+      -ms-overflow-style: none;
 
       .rule-title {
         font-size: 1.2rem;
@@ -268,7 +271,7 @@ body,
 
 .btn {
   padding: 0.6rem 2rem;
-  border-radius: 2rem; 
+  border-radius: 2rem;
   font-weight: 700;
   border: none;
   cursor: pointer;
@@ -660,7 +663,6 @@ body,
       min-height: 4.5rem;
       max-height: 7rem;
 
-
       border-radius: calc(~"var(--final-width) * 0.1"); // 1.2 / 12
       border-width: calc(~"var(--final-width) * 0.0167"); // 0.2 / 12
 
@@ -732,8 +734,8 @@ body,
   position: sticky;
   bottom: 0;
   width: 100%;
-  margin-top: auto; 
-  border: 2px solid rgba(255, 255, 255, 0.1); 
+  margin-top: auto;
+  border: 2px solid rgba(255, 255, 255, 0.1);
 
   &.winner {
     border-color: #facc15 !important;
@@ -936,23 +938,23 @@ body,
       }
 
       @media (max-width: 500px) {
-        --selected-offset: -0.8rem; 
+        --selected-offset: -0.8rem;
 
         &.selected {
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
         }
       }
 
       // 触摸设备
       @media (hover: none), (pointer: coarse) {
         &:hover {
-          transform: translateY(0); 
-          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); 
+          transform: translateY(0);
+          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3);
         }
 
         &.selected:hover {
-          transform: translateY(var(--selected-offset)); 
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
+          transform: translateY(var(--selected-offset));
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
         }
       }
     }
@@ -1309,4 +1311,49 @@ body,
     padding: 0.5rem 1.5rem;
     font-size: 0.9rem;
   }
+}
+
+// 牌背样式 - 绿色系 (斗地主)
+.card-backs {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.card-back {
+  background: linear-gradient(135deg, #1a4d2e 0%, #0d3320 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+
+  // 牌背花纹
+  &::after {
+    content: "♠";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.15);
+    font-size: inherit;
+  }
+
+  &.mini {
+    width: 1.2rem;
+    height: 1.7rem;
+    font-size: 0.6rem;
+
+    @media (max-width: 768px) {
+      width: 1rem;
+      height: 1.4rem;
+      font-size: 0.5rem;
+    }
+  }
+}
+
+.more-cards {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 0.25rem;
 }

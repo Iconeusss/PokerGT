@@ -39,7 +39,7 @@
   }
 }
 
-// 玩家信息卡片 
+// 玩家信息卡片
 .player-info {
   background: rgba(0, 0, 0, 0.6);
   border-radius: 1rem;
@@ -197,5 +197,77 @@
       top: -10px;
       right: -5px;
     }
+  }
+
+  // 卡背行容器 - 卡背和数量在同一行
+  .card-backs-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  }
+
+  // 卡背容器
+  .card-backs {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+
+  // 数量徽章
+  .cards-count-badge {
+    background: rgba(251, 191, 36, 0.9);
+    color: #1f2937;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.5rem;
+    min-width: 1.5rem;
+    text-align: center;
+  }
+
+  // 卡背样式 - 使用 CSS 变量支持主题颜色
+  .card-back {
+    background: var(
+      --card-back-gradient,
+      linear-gradient(135deg, #374151 0%, #1f2937 100%)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    position: relative;
+
+    // 牌背花纹
+    &::after {
+      content: "♠";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255, 255, 255, 0.15);
+      font-size: inherit;
+    }
+
+    &.mini {
+      width: 1.2rem;
+      height: 1.7rem;
+      font-size: 0.6rem;
+
+      @media (max-width: 768px) {
+        width: 1rem;
+        height: 1.4rem;
+        font-size: 0.5rem;
+      }
+    }
+  }
+
+  .more-cards {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 0.25rem;
   }
 }

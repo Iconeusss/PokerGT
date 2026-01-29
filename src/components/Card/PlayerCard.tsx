@@ -34,7 +34,7 @@ export interface PlayerCardProps {
     index?: number,
   ) => React.ReactNode;
   className?: string;
-  reverseCards?: boolean; 
+  reverseCards?: boolean;
 }
 
 const PlayerCard: React.FC<PlayerCardProps> = ({
@@ -68,8 +68,23 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
   return (
     <div className={classNames}>
       <h3 className="player-name">{player.name}</h3>
-      <p className="player-cards-count">剩余: {player.cards.length} 张</p>
       <p className="player-stats">出牌: {player.playCount || 0}</p>
+
+      {/* 游戏进行中显示卡背和剩余数量在同一行 */}
+      {!showRemainingCards && player.cards.length > 0 && (
+        <div className="card-backs-row">
+          <div className="card-backs">
+            {Array.from({ length: Math.min(player.cards.length, 4) }).map(
+              (_, i) => (
+                <div key={i} className="card-back mini" />
+              ),
+            )}
+          </div>
+          <span className="cards-count-badge">{player.cards.length}</span>
+        </div>
+      )}
+
+      {/* 游戏结束显示实际牌面 */}
       {showRemainingCards && player.cards.length > 0 && (
         <div className="remaining-cards">
           {cardsToRender.map((c) => renderCard(c, false, false, "mini"))}

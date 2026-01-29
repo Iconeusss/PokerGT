@@ -13,7 +13,7 @@ body,
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden; 
+  overflow-x: hidden;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -29,6 +29,9 @@ body,
   color: @color-text-light;
   display: flex;
   flex-direction: column;
+
+  // 卡背颜色 - 红色系
+  --card-back-gradient: linear-gradient(135deg, #7f1d1d 0%, #4a0404 100%);
 }
 
 .game-wrapper {
@@ -344,7 +347,7 @@ body,
     left: 1rem;
     margin: 0;
     z-index: 100;
-    flex-direction: column; 
+    flex-direction: column;
   }
 }
 
@@ -531,7 +534,7 @@ body,
 .game-area {
   position: relative;
   display: flex;
-  align-items: center; 
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0;
@@ -539,8 +542,8 @@ body,
   flex: 1;
 
   @media (max-width: 768px) {
-    flex-direction: row; 
-    flex-wrap: nowrap; 
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.25rem;
@@ -560,11 +563,11 @@ body,
     order: 1;
     @media (max-width: 768px) {
       order: 1;
-      flex: 0 0 auto; 
-      width: 25%; 
+      flex: 0 0 auto;
+      width: 25%;
       max-width: 90px;
       padding: 0;
-      flex-direction: column; 
+      flex-direction: column;
       margin-bottom: 0;
     }
   }
@@ -601,8 +604,8 @@ body,
   // border: 3px solid darkgray;
 
   @media (max-width: 768px) {
-    order: 2; 
-    flex: 1; 
+    order: 2;
+    flex: 1;
     width: auto;
     justify-content: center;
     padding-top: 0;
@@ -680,11 +683,11 @@ body,
   }
 
   .table-title {
-    display: none; 
+    display: none;
   }
 
   .table-info {
-    display: none; 
+    display: none;
   }
 
   .table-cards {
@@ -1061,7 +1064,7 @@ body,
         border-color: #fbbf24;
       }
 
-      // 选中且悬停 
+      // 选中且悬停
       @media (hover: hover) {
         &.selected:hover {
           transform: translateY(var(--selected-offset));
@@ -1074,24 +1077,24 @@ body,
 
       // 超小屏幕
       @media (max-width: 500px) {
-        margin-left: 0; 
-        --selected-offset: -0.8rem; 
+        margin-left: 0;
+        --selected-offset: -0.8rem;
 
         &.selected {
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
         }
       }
 
       // 触摸设备
       @media (hover: none), (pointer: coarse) {
         &:hover {
-          transform: translateY(0); 
-          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3); 
+          transform: translateY(0);
+          box-shadow: -2px 0 4px rgba(0, 0, 0, 0.3);
         }
 
         &.selected:hover {
-          transform: translateY(var(--selected-offset)); 
-          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); 
+          transform: translateY(var(--selected-offset));
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
         }
       }
     }
@@ -1755,4 +1758,49 @@ body,
 // 小屏幕手牌第二行
 .hand-cards-second-row {
   margin-top: -6rem;
+}
+
+// 牌背样式 - 红色系 (掼蛋)
+.card-backs {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.card-back {
+  background: linear-gradient(135deg, #7f1d1d 0%, #4a0404 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+
+  // 牌背花纹
+  &::after {
+    content: "♠";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.15);
+    font-size: inherit;
+  }
+
+  &.mini {
+    width: 1.2rem;
+    height: 1.7rem;
+    font-size: 0.6rem;
+
+    @media (max-width: 768px) {
+      width: 1rem;
+      height: 1.4rem;
+      font-size: 0.5rem;
+    }
+  }
+}
+
+.more-cards {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 0.25rem;
 }
