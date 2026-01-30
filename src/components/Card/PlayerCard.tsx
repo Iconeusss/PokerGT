@@ -70,7 +70,6 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
       <h3 className="player-name">{player.name}</h3>
       <p className="player-stats">出牌: {player.playCount || 0}</p>
 
-      {/* 游戏进行中显示卡背和剩余数量在同一行 */}
       {!showRemainingCards && player.cards.length > 0 && (
         <div className="card-backs-row">
           <div className="card-backs">
@@ -84,7 +83,6 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
         </div>
       )}
 
-      {/* 游戏结束显示实际牌面 */}
       {showRemainingCards && player.cards.length > 0 && (
         <div className="remaining-cards">
           {cardsToRender.map((c) => renderCard(c, false, false, "mini"))}

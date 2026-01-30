@@ -672,7 +672,7 @@ const GuanDan: React.FC = () => {
         // setMessage("进贡成功");
         const timer = setTimeout(() => {
           // 显示下一轮信息
-          const roundMsg = `第 ${roundIndex + 1} / 7 轮开始，当前级牌：${levelRank} (本方:${teamLevels[0]}, 对方:${teamLevels[1]})`;
+          const roundMsg = `第 ${roundIndex + 1} / 2 轮开始，当前级牌：${levelRank} (本方:${teamLevels[0]}, 对方:${teamLevels[1]})`;
           setMessage(roundMsg);
           setGamePhase("playing");
 
@@ -1108,7 +1108,7 @@ const GuanDan: React.FC = () => {
 
     // 进贡逻辑
     let nextPhase: "playing" | "tribute" = "playing";
-    let nextMessage = `第 ${nextRoundIndex} / 7 轮开始，当前级牌：${activeLevel} (本方:${nextTeamLevels[0]}, 对方:${nextTeamLevels[1]})`;
+    let nextMessage = `第 ${nextRoundIndex} / 2 轮开始，当前级牌：${activeLevel} (本方:${nextTeamLevels[0]}, 对方:${nextTeamLevels[1]})`;
 
     if (nextRoundIndex > 1 && prevFinishedOrder.length === 4) {
       const tributes = calculateTribute(prevFinishedOrder);
@@ -1444,7 +1444,7 @@ const GuanDan: React.FC = () => {
       (pid) => players[pid]?.name ?? `玩家${pid + 1}`,
     );
 
-    let endMsg = `第 ${roundIndex} / 7 轮结束：${winnerNames.join(" → ")}。队伍${firstTeam + 1}升级 + ${delta}，下轮级牌：${nextActiveLevel}`;
+    let endMsg = `第 ${roundIndex} / 2 轮结束：${winnerNames.join(" → ")}。队伍${firstTeam + 1}升级 + ${delta}，下轮级牌：${nextActiveLevel}`;
 
     if (isGameOver) {
       setGamePhase("end");
@@ -1455,7 +1455,7 @@ const GuanDan: React.FC = () => {
       return;
     }
 
-    if (roundIndex >= 7) {
+    if (roundIndex >= 2) {
       setGamePhase("end");
       // 比较级牌
       const team0LevelIdx = levelSequence.indexOf(nextTeamLevels[0]);
@@ -2414,7 +2414,7 @@ const GuanDan: React.FC = () => {
             <div className="center-area">
               <div className="table-area">
                 <div className="table-header">
-                  <div className="table-info-badge">轮次: {roundIndex} / 7</div>
+                  <div className="table-info-badge">轮次: {roundIndex} / 2</div>
                   <div className="table-info-badge">级牌：{levelRank}</div>
                 </div>
 

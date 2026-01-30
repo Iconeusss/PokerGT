@@ -1,4 +1,3 @@
-
 interface Card {
   suit: string;
   rank: string;
@@ -463,7 +462,7 @@ export const playsByAI = (
   const opponentId = lastPlayerId;
   const opponentConsecutivePlays =
     opponentId >= 0 ? consecutivePlayCounts[opponentId] || 0 : 0;
-  const shouldIntercept = opponentConsecutivePlays >= 2;
+  const shouldIntercept = opponentConsecutivePlays >= 4;
 
   const opponentCards =
     opponentId >= 0 ? players[opponentId]?.cards.length || 27 : 27;
@@ -509,7 +508,7 @@ export const playsByAI = (
           groups[v].length === 3)
       ) {
         if (isTeammate && v >= 14) continue;
-        const isEndGame = hand.length <= 10;  // 任何牌型都拆
+        const isEndGame = hand.length <= 10; // 任何牌型都拆
         if (v >= 14 && lastType.value < 10 && !aggressiveMode && !isEndGame) {
           continue;
         }
@@ -689,8 +688,8 @@ export const playsByAI = (
         }
       }
 
-      const isEndGame = hand.length <= 10;
-      const isUrgent = lastType.value >= 14;
+      const isEndGame = hand.length <= 6;
+      const isUrgent = lastType.value >= 15; // 只有2或更大时才算紧急
 
       if (isEndGame || isUrgent) {
         const validSmallBombs = smallBombs.filter((b) =>
@@ -701,7 +700,7 @@ export const playsByAI = (
           return validSmallBombs[0].cards;
         }
 
-        if (hand.length <= 5 || lastType.value >= 14) {
+        if (hand.length <= 4 || lastType.value >= 15) {
           const validValuableBombs = valuableBombs.filter((b) =>
             canBeat(b.cards, last, levelCardValue),
           );

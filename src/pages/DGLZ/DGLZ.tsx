@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PlayerCard from "../../components/Card/PlayerCard";
+import { playsByAI } from "./ai/dglzAI";
 import "./DGLZ.less";
 
 // --- 基础接口与常量 ---
-interface Card {
+export interface Card {
   suit: string;
   rank: string;
   id: string;
@@ -189,6 +190,323 @@ const dealCards = (
   return newPlayers;
 };
 
+// --- 牌型判断 ---
+interface CardType {
+  type: string; // 牌型名称
+  typeRank: number; // 牌型排名（5张牌用，1-6）
+  value: number; // 点数/比较值
+  count: number; // 牌数
+}
+
+// 判断是否是王（万能牌）
+const isJoker = (card: Card): boolean => {
+  return card.rank === "joker" || card.rank === "JOKER";
+};
+
+// 判断牌型
+const getDGLZType = (cards: Card[]): CardType | null => {
+  const len = cards.length;
+  if (len === 0) return null;
+
+  // 只能出1/2/3/5张
+  if (![1, 2, 3, 5].includes(len)) return null;
+
+  // 分离王牌和普通牌
+  const jokers = cards.filter(isJoker);
+  const normalCards = cards.filter((c) => !isJoker(c));
+  const jokerCount = jokers.length;
+
+  // 统计普通牌点数
+  const counts: { [key: number]: number } = {};
+  normalCards.forEach((c) => {
+    counts[c.value] = (counts[c.value] || 0) + 1;
+  });
+  const uniqueValues = Object.keys(counts)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  // === 1张：单张 ===
+  if (len === 1) {
+    return { type: "single", typeRank: 0, value: cards[0].value, count: 1 };
+  }
+
+  // === 2张：对子 ===
+  if (len === 2) {
+    // 两个王不能组成对子（王只能配普通牌）
+    if (jokerCount === 2) return null;
+    // 一张王配一张普通牌 或 两张相同点数
+    if (
+      jokerCount === 1 ||
+      (uniqueValues.length === 1 && counts[uniqueValues[0]] === 2)
+    ) {
+      const pairValue =
+        normalCards.length > 0
+          ? Math.max(...normalCards.map((c) => c.value))
+          : 0;
+      return { type: "pair", typeRank: 0, value: pairValue, count: 2 };
+    }
+    return null;
+  }
+
+  // === 3张：三条 ===
+  if (len === 3) {
+    // 检查是否能组成三条
+    if (
+      uniqueValues.length === 1 &&
+      counts[uniqueValues[0]] + jokerCount === 3
+    ) {
+      return { type: "triple", typeRank: 0, value: uniqueValues[0], count: 3 };
+    }
+    if (
+      uniqueValues.length === 1 &&
+      jokerCount > 0 &&
+      counts[uniqueValues[0]] + jokerCount >= 3
+    ) {
+      return { type: "triple", typeRank: 0, value: uniqueValues[0], count: 3 };
+    }
+    // 多个点数但王够用
+    if (jokerCount >= 3 - normalCards.length && uniqueValues.length <= 1) {
+      const tripleValue = uniqueValues.length > 0 ? uniqueValues[0] : 0;
+      return { type: "triple", typeRank: 0, value: tripleValue, count: 3 };
+    }
+    // 两种点数，王凑成三条
+    if (uniqueValues.length === 2) {
+      for (const val of uniqueValues) {
+        if (counts[val] + jokerCount >= 3) {
+          return { type: "triple", typeRank: 0, value: val, count: 3 };
+        }
+      }
+    }
+    return null;
+  }
+
+  // === 5张：六种牌型 ===
+  if (len === 5) {
+    const allSameSuit =
+      normalCards.length === 0 ||
+      normalCards.every((c) => c.suit === normalCards[0].suit);
+
+    // 辅助：检查是否是顺子（返回最大值，王算最大）
+    const checkStraight = (): number | null => {
+      if (normalCards.length === 0) return null; // 5个王不能组顺子
+
+      const normalValues = normalCards
+        .map((c) => c.value)
+        .filter((v) => v <= 14); // 排除2和王
+      if (normalValues.length === 0) return null;
+
+      // 顺子范围：3-7 到 10-A (值 3-7 到 10-14)
+      const sortedNormal = [...normalValues].sort((a, b) => a - b);
+      const minVal = sortedNormal[0];
+      const maxVal = sortedNormal[sortedNormal.length - 1];
+
+      // 检查范围是否有效（3-14之间）
+      if (minVal < 3 || maxVal > 14) return null;
+
+      // 检查能否用王补成顺子
+      let neededJokers = 0;
+      for (let v = minVal; v <= minVal + 4; v++) {
+        if (v > 14) return null; // 超出A
+        if (!normalValues.includes(v)) {
+          neededJokers++;
+        }
+      }
+
+      if (neededJokers <= jokerCount) {
+        // 王在顺子中算最大值
+        return minVal + 4;
+      }
+
+      // 尝试其他起始位置
+      for (let start = 3; start <= 10; start++) {
+        let needed = 0;
+        let canForm = true;
+        for (let i = 0; i < 5; i++) {
+          const targetVal = start + i;
+          if (!normalValues.includes(targetVal)) {
+            needed++;
+            if (needed > jokerCount) {
+              canForm = false;
+              break;
+            }
+          }
+        }
+        if (canForm) {
+          return start + 4; // 返回顺子最大值
+        }
+      }
+
+      return null;
+    };
+
+    // 1. 五条（最大）：5张相同点数
+    if (
+      uniqueValues.length === 1 &&
+      counts[uniqueValues[0]] + jokerCount === 5
+    ) {
+      return {
+        type: "five_of_kind",
+        typeRank: 6,
+        value: uniqueValues[0],
+        count: 5,
+      };
+    }
+    if (uniqueValues.length <= 1 && jokerCount >= 5 - normalCards.length) {
+      const fiveValue = uniqueValues.length > 0 ? uniqueValues[0] : 17; // 5个王
+      return { type: "five_of_kind", typeRank: 6, value: fiveValue, count: 5 };
+    }
+    // 检查能否用王凑成五条
+    for (const val of uniqueValues) {
+      if (counts[val] + jokerCount >= 5) {
+        return { type: "five_of_kind", typeRank: 6, value: val, count: 5 };
+      }
+    }
+
+    // 2. 同花顺：相同花色的顺子
+    const straightMax = checkStraight();
+    if (straightMax !== null && allSameSuit) {
+      return {
+        type: "straight_flush",
+        typeRank: 5,
+        value: straightMax,
+        count: 5,
+      };
+    }
+
+    // 3. 炸弹：四带一
+    for (const val of uniqueValues) {
+      if (counts[val] + jokerCount >= 4 && counts[val] < 5) {
+        const usedJokers = Math.max(0, 4 - counts[val]);
+        const remaining = jokerCount - usedJokers;
+        const otherCards = normalCards.filter((c) => c.value !== val);
+        if (otherCards.length + remaining === 1) {
+          return { type: "bomb", typeRank: 4, value: val, count: 5 };
+        }
+      }
+    }
+    // 4个王+1普通牌
+    if (jokerCount === 4 && normalCards.length === 1) {
+      return {
+        type: "bomb",
+        typeRank: 4,
+        value: normalCards[0].value,
+        count: 5,
+      };
+    }
+
+    // 4. 葫芦：三带二
+    for (const tripleVal of uniqueValues) {
+      const tripleCount = counts[tripleVal];
+      if (tripleCount + jokerCount >= 3) {
+        const usedJokersForTriple = Math.max(0, 3 - tripleCount);
+        const remainingJokers = jokerCount - usedJokersForTriple;
+        const otherCards = normalCards.filter((c) => c.value !== tripleVal);
+
+        // 检查剩余能否组成对子
+        const otherCounts: { [key: number]: number } = {};
+        otherCards.forEach((c) => {
+          otherCounts[c.value] = (otherCounts[c.value] || 0) + 1;
+        });
+
+        for (const pairVal of Object.keys(otherCounts).map(Number)) {
+          if (
+            otherCounts[pairVal] + remainingJokers >= 2 &&
+            otherCounts[pairVal] + remainingJokers - 2 ===
+              otherCards.length - otherCounts[pairVal]
+          ) {
+            if (otherCards.length + remainingJokers === 2) {
+              return {
+                type: "fullhouse",
+                typeRank: 3,
+                value: tripleVal,
+                count: 5,
+              };
+            }
+          }
+        }
+        // 简化检查：剩余2张能组成对子
+        if (otherCards.length + remainingJokers === 2) {
+          if (
+            otherCards.length === 2 &&
+            otherCards[0].value === otherCards[1].value
+          ) {
+            return {
+              type: "fullhouse",
+              typeRank: 3,
+              value: tripleVal,
+              count: 5,
+            };
+          }
+          if (remainingJokers >= 1 && otherCards.length <= 2) {
+            return {
+              type: "fullhouse",
+              typeRank: 3,
+              value: tripleVal,
+              count: 5,
+            };
+          }
+        }
+      }
+    }
+
+    // 5. 同花：相同花色任意5张
+    if (allSameSuit && normalCards.length >= 1) {
+      const maxValue = Math.max(...cards.map((c) => c.value));
+      return { type: "flush", typeRank: 2, value: maxValue, count: 5 };
+    }
+
+    // 6. 杂顺：不同花色的顺子
+    if (straightMax !== null && !allSameSuit) {
+      return { type: "straight", typeRank: 1, value: straightMax, count: 5 };
+    }
+
+    return null;
+  }
+
+  return null;
+};
+
+// 比较牌型
+const canBeat = (playedCards: Card[], lastCards: Card[]): boolean => {
+  // 自由出牌
+  if (!lastCards || lastCards.length === 0) {
+    return getDGLZType(playedCards) !== null;
+  }
+
+  const played = getDGLZType(playedCards);
+  const last = getDGLZType(lastCards);
+
+  if (!played || !last) return false;
+
+  // 必须相同牌数
+  if (played.count !== last.count) return false;
+
+  // 5张牌先比牌型排名
+  if (played.count === 5) {
+    if (played.typeRank > last.typeRank) return true;
+    if (played.typeRank < last.typeRank) return false;
+  }
+
+  // 同牌型比点数
+  return played.value > last.value;
+};
+
+// 获取中文牌型名称
+const getCNTypeName = (type: string): string => {
+  const names: { [key: string]: string } = {
+    single: "单张",
+    pair: "对子",
+    triple: "三条",
+    straight: "杂顺",
+    flush: "同花",
+    fullhouse: "葫芦",
+    bomb: "炸弹",
+    straight_flush: "同花顺",
+    five_of_kind: "五条",
+  };
+  return names[type] || type;
+};
+
 const DaGuaiLuZi: React.FC = () => {
   const navigate = useNavigate();
 
@@ -324,7 +642,7 @@ const DaGuaiLuZi: React.FC = () => {
     }
   }, [myCards]);
 
-  // 出牌 (暂时简化)
+  // 出牌
   const playCards = () => {
     const selected = players[0].cards.filter((card) =>
       selectedCards.includes(card.id),
@@ -333,7 +651,29 @@ const DaGuaiLuZi: React.FC = () => {
       setMessage("请先选择要出的牌");
       return;
     }
-    // TODO: 添加牌型验证
+
+    // 验证牌型
+    const cardType = getDGLZType(selected);
+    if (!cardType) {
+      setMessage(`❌ 无效牌型！只能出1/2/3/5张，且必须符合规则`);
+      return;
+    }
+
+    // 验证能否压过
+    if (lastPlayedCards.length > 0) {
+      if (!canBeat(selected, lastPlayedCards)) {
+        const lastType = getDGLZType(lastPlayedCards);
+        if (lastType && selected.length !== lastType.count) {
+          setMessage(`❌ 必须出${lastType.count}张牌！`);
+        } else {
+          setMessage(
+            `❌ 压不过！需要更大的${getCNTypeName(lastType?.type || "")}`,
+          );
+        }
+        return;
+      }
+    }
+
     handlePlay(0, selected);
   };
 
@@ -351,10 +691,13 @@ const DaGuaiLuZi: React.FC = () => {
     setSelectedCards([]);
 
     // 设置该玩家的出牌动作
-    setPlayerActions((prev) => ({
-      ...prev,
-      [playerId]: { type: "play", cards: cardsToPlay },
-    }));
+    setPlayerActions((prev) => {
+      // 如果是新的一轮领出（上家ID是-1），清理桌面所有动作
+      const isNewRound = lastPlayerId === -1;
+      const newState = isNewRound ? {} : { ...prev };
+      newState[playerId] = { type: "play", cards: cardsToPlay };
+      return newState;
+    });
 
     if (newPlayers[playerId].cards.length === 0) {
       setMessage(`🎉 ${newPlayers[playerId].name} 获胜！`);
@@ -373,7 +716,6 @@ const DaGuaiLuZi: React.FC = () => {
     const newPassCount = passCount + 1;
     setPassCount(newPassCount);
     const nextPlayer = (currentPlayer + 1) % GAME_CONSTANTS.PLAYER_COUNT;
-    setCurrentPlayer(nextPlayer);
 
     // 设置当前玩家的过牌动作
     setPlayerActions((prev) => ({
@@ -384,13 +726,85 @@ const DaGuaiLuZi: React.FC = () => {
     if (newPassCount >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
       setLastPlayedCards([]);
       setPassCount(0);
+      setLastPlayerId(-1); // 重置上家ID
       // 清除所有玩家的动作状态，新一轮开始
       setPlayerActions({});
       setMessage(`${players[nextPlayer].name} 获得出牌权`);
     } else {
       setMessage(`${players[currentPlayer].name} 过牌`);
     }
+
+    setCurrentPlayer(nextPlayer);
   };
+
+  // 轮到玩家出牌时，清除该玩家上一轮的动作显示
+  useEffect(() => {
+    if (gamePhase === "playing") {
+      setPlayerActions((prev) => {
+        if (!prev[currentPlayer]) return prev;
+        const newState = { ...prev };
+        delete newState[currentPlayer];
+        return newState;
+      });
+    }
+  }, [currentPlayer, gamePhase]);
+
+  // AI出牌逻辑
+  useEffect(() => {
+    if (gamePhase !== "playing") return;
+    if (currentPlayer === 0) return; // 玩家回合不处理
+
+    const aiDelay = setTimeout(() => {
+      const aiPlayer = players[currentPlayer];
+      if (!aiPlayer || aiPlayer.cards.length === 0) return;
+
+      const ctx = {
+        currentPlayer,
+        passCount,
+        playerCardCounts: players.map((p) => p.cards.length),
+      };
+
+      const aiCards = playsByAI(
+        aiPlayer.cards,
+        lastPlayedCards,
+        ctx,
+        getDGLZType,
+        canBeat,
+      );
+
+      if (aiCards && aiCards.length > 0) {
+        // AI出牌
+        const cardType = getDGLZType(aiCards);
+        const typeName = cardType ? getCNTypeName(cardType.type) : "";
+        setMessage(`${aiPlayer.name} 出了 ${typeName}`);
+        handlePlay(currentPlayer, aiCards);
+      } else {
+        // AI过牌
+        const newPassCount = passCount + 1;
+        setPassCount(newPassCount);
+        const nextPlayer = (currentPlayer + 1) % GAME_CONSTANTS.PLAYER_COUNT;
+
+        setPlayerActions((prev) => ({
+          ...prev,
+          [currentPlayer]: { type: "pass" },
+        }));
+
+        if (newPassCount >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
+          setLastPlayedCards([]);
+          setPassCount(0);
+          setLastPlayerId(-1); // 重置上家ID
+          setPlayerActions({});
+          setMessage(`${players[nextPlayer].name} 获得出牌权`);
+        } else {
+          setMessage(`${aiPlayer.name} 过牌`);
+        }
+
+        setCurrentPlayer(nextPlayer);
+      }
+    }, 800); // AI思考延迟
+
+    return () => clearTimeout(aiDelay);
+  }, [currentPlayer, gamePhase, players, lastPlayedCards, passCount]);
 
   // 处理触摸滑动
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -637,66 +1051,15 @@ const DaGuaiLuZi: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                <div className="rule-title">五张牌型（从小到大）</div>
                 <div className="rule-item">
-                  <span className="rule-label">三带二</span>
-                  <div className="rule-cards">
-                    {renderCard(
-                      { id: "-7", rank: "9", suit: "♠", value: 9 },
-                      false,
-                      false,
-                      "mini",
-                    )}
-                    {renderCard(
-                      { id: "-8", rank: "9", suit: "♥", value: 9 },
-                      false,
-                      false,
-                      "mini",
-                    )}
-                    {renderCard(
-                      { id: "-9", rank: "9", suit: "♣", value: 9 },
-                      false,
-                      false,
-                      "mini",
-                    )}
-                    {renderCard(
-                      { id: "-10", rank: "5", suit: "♦", value: 5 },
-                      false,
-                      false,
-                      "mini",
-                    )}
-                    {renderCard(
-                      { id: "-11", rank: "5", suit: "♣", value: 5 },
-                      false,
-                      false,
-                      "mini",
-                    )}
-                  </div>
-                </div>
-                <div className="rule-item">
-                  <span className="rule-label">顺子</span>
+                  <span className="rule-label">1. 杂顺</span>
                   <div className="rule-cards">
                     {["7", "8", "9", "10", "J"].map((r, i) =>
                       renderCard(
                         {
                           id: `-s${i}`,
-                          rank: r,
-                          suit: "♠",
-                          value: rankValues[r],
-                        },
-                        false,
-                        false,
-                        "mini",
-                      ),
-                    )}
-                  </div>
-                </div>
-                <div className="rule-item">
-                  <span className="rule-label">连对</span>
-                  <div className="rule-cards">
-                    {["7", "7", "8", "8", "9", "9"].map((r, i) =>
-                      renderCard(
-                        {
-                          id: `-p${i}`,
                           rank: r,
                           suit: suits[i % 4],
                           value: rankValues[r],
@@ -706,67 +1069,179 @@ const DaGuaiLuZi: React.FC = () => {
                         "mini",
                       ),
                     )}
-                  </div>
-                </div>
-                <div className="rule-item align-top">
-                  <span className="rule-label">炸弹</span>
-                  <div className="rule-cards column-layout">
-                    <div className="card-row">
-                      {renderCard(
-                        { id: "-b1", rank: "2", suit: "♠", value: 15 },
-                        false,
-                        false,
-                        "mini",
-                      )}
-                      {renderCard(
-                        { id: "-b2", rank: "2", suit: "♥", value: 15 },
-                        false,
-                        false,
-                        "mini",
-                      )}
-                      {renderCard(
-                        { id: "-b3", rank: "2", suit: "♣", value: 15 },
-                        false,
-                        false,
-                        "mini",
-                      )}
-                      {renderCard(
-                        { id: "-b4", rank: "2", suit: "♦", value: 15 },
-                        false,
-                        false,
-                        "mini",
-                      )}
-                    </div>
-                    <div className="rule-hint">（4张及以上同点数牌）</div>
+                    <span className="rule-desc">不同花色顺子</span>
                   </div>
                 </div>
                 <div className="rule-item">
-                  <span className="rule-label">王炸</span>
+                  <span className="rule-label">2. 同花</span>
+                  <div className="rule-cards">
+                    {["3", "5", "9", "J", "K"].map((r, i) =>
+                      renderCard(
+                        {
+                          id: `-f${i}`,
+                          rank: r,
+                          suit: "♥",
+                          value: rankValues[r],
+                        },
+                        false,
+                        false,
+                        "mini",
+                      ),
+                    )}
+                    <span className="rule-desc">相同花色5张</span>
+                  </div>
+                </div>
+                <div className="rule-item">
+                  <span className="rule-label">3. 葫芦</span>
                   <div className="rule-cards">
                     {renderCard(
-                      { id: "-j1", rank: "joker", suit: "🃟", value: 16 },
+                      { id: "-fh1", rank: "9", suit: "♠", value: 9 },
                       false,
                       false,
                       "mini",
                     )}
                     {renderCard(
-                      { id: "-j2", rank: "joker", suit: "🃟", value: 16 },
+                      { id: "-fh2", rank: "9", suit: "♥", value: 9 },
                       false,
                       false,
                       "mini",
                     )}
                     {renderCard(
-                      { id: "-j3", rank: "JOKER", suit: "🂿", value: 17 },
+                      { id: "-fh3", rank: "9", suit: "♣", value: 9 },
                       false,
                       false,
                       "mini",
                     )}
                     {renderCard(
-                      { id: "-j4", rank: "JOKER", suit: "🂿", value: 17 },
+                      { id: "-fh4", rank: "5", suit: "♦", value: 5 },
                       false,
                       false,
                       "mini",
                     )}
+                    {renderCard(
+                      { id: "-fh5", rank: "5", suit: "♣", value: 5 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    <span className="rule-desc">三带二</span>
+                  </div>
+                </div>
+                <div className="rule-item">
+                  <span className="rule-label">4. 炸弹</span>
+                  <div className="rule-cards">
+                    {renderCard(
+                      { id: "-b1", rank: "7", suit: "♠", value: 7 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-b2", rank: "7", suit: "♥", value: 7 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-b3", rank: "7", suit: "♣", value: 7 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-b4", rank: "7", suit: "♦", value: 7 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-b5", rank: "3", suit: "♠", value: 3 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    <span className="rule-desc">四带一</span>
+                  </div>
+                </div>
+                <div className="rule-item">
+                  <span className="rule-label">5. 同花顺</span>
+                  <div className="rule-cards">
+                    {["7", "8", "9", "10", "J"].map((r, i) =>
+                      renderCard(
+                        {
+                          id: `-sf${i}`,
+                          rank: r,
+                          suit: "♠",
+                          value: rankValues[r],
+                        },
+                        false,
+                        false,
+                        "mini",
+                      ),
+                    )}
+                    <span className="rule-desc">相同花色顺子</span>
+                  </div>
+                </div>
+                <div className="rule-item">
+                  <span className="rule-label">6. 五条</span>
+                  <div className="rule-cards">
+                    {renderCard(
+                      { id: "-fk1", rank: "A", suit: "♠", value: 14 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-fk2", rank: "A", suit: "♥", value: 14 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-fk3", rank: "A", suit: "♣", value: 14 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-fk4", rank: "A", suit: "♦", value: 14 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-fk5", rank: "A", suit: "♠", value: 14 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    <span className="rule-desc">5张相同点数（最大）</span>
+                  </div>
+                </div>
+
+                <div className="rule-title">特殊规则</div>
+                <div className="rule-item">
+                  <span className="rule-label">万能牌</span>
+                  <div className="rule-cards">
+                    {renderCard(
+                      { id: "-w1", rank: "joker", suit: "🃟", value: 16 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    {renderCard(
+                      { id: "-w2", rank: "JOKER", suit: "🂿", value: 17 },
+                      false,
+                      false,
+                      "mini",
+                    )}
+                    <span className="rule-desc">2张及以上时可替代任意牌</span>
+                  </div>
+                </div>
+                <div className="rule-item">
+                  <span className="rule-label">出牌规则</span>
+                  <div className="rule-cards">
+                    只能出1/2/3/5张，不同牌数不能互压
                   </div>
                 </div>
               </div>
@@ -814,7 +1289,7 @@ const DaGuaiLuZi: React.FC = () => {
         </div>
 
         {/* 消息提示 */}
-        <div className="message-box">
+        <div className="message-box-dglz">
           <p className="message-text">{message}</p>
         </div>
 
@@ -844,35 +1319,37 @@ const DaGuaiLuZi: React.FC = () => {
         )}
 
         {/* 游戏区域 */}
-        <div className="game-table">
-          {/* 左侧两个电脑玩家 - 顺时针：2(左上), 1(左下) */}
-          <div className="left-players">
-            <div className="side-player">
-              <PlayerCard
-                player={players[2]}
-                isActive={currentPlayer === 2 && gamePhase === "playing"}
-                isLandlord={false}
-                isWinner={gamePhase === "end" && lastPlayerId === 2}
-                isGameWinner={false}
-                showRemainingCards={gamePhase === "end"}
-                renderCard={renderCard}
-              />
-            </div>
-            <div className="side-player">
-              <PlayerCard
-                player={players[1]}
-                isActive={currentPlayer === 1 && gamePhase === "playing"}
-                isLandlord={false}
-                isWinner={gamePhase === "end" && lastPlayerId === 1}
-                isGameWinner={false}
-                showRemainingCards={gamePhase === "end"}
-                renderCard={renderCard}
-              />
-            </div>
-          </div>
+        {gamePhase !== "init" && (
+          <div className="game-area">
+            {/* 出牌展示区域 - 覆盖在游戏区域之上 */}
+            <div className="played-cards-container">
+              {[0, 1, 2, 3, 4, 5].map((pid) => {
+                const action = playerActions[pid];
+                if (!action) return null;
 
-          {/* 中间游戏区域 */}
-          <div className="center-area">
+                return (
+                  <div
+                    key={pid}
+                    className={`played-cards-area-dglz pos-${pid}`}
+                  >
+                    {action.type === "pass" ? (
+                      <div className="pass-text">过牌</div>
+                    ) : (
+                      <div className="played-card-group">
+                        {[...(action.cards || [])]
+                          .sort((a, b) => a.value - b.value)
+                          .map((card, idx) => (
+                            <div key={card.id} style={{ zIndex: idx }}>
+                              {renderCard(card, false, false, "small", -1)}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             {/* 顶部电脑玩家 - 顺时针：3 */}
             <div className="top-player">
               <PlayerCard
@@ -886,57 +1363,64 @@ const DaGuaiLuZi: React.FC = () => {
               />
             </div>
 
-            {/* 出牌展示区域 - 每个玩家的出牌在各自位置 */}
-            <div className="played-cards-container">
-              {[0, 1, 2, 3, 4, 5].map((pid) => {
-                const action = playerActions[pid];
-                if (!action) return null;
+            {/* 左侧两个电脑玩家 - 顺时针：2(左上), 1(左下) */}
+            <div className="side-player left">
+              <div className="side-player-item">
+                <PlayerCard
+                  player={players[2]}
+                  isActive={currentPlayer === 2 && gamePhase === "playing"}
+                  isLandlord={false}
+                  isWinner={gamePhase === "end" && lastPlayerId === 2}
+                  isGameWinner={false}
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
+              </div>
+              <div className="side-player-item">
+                <PlayerCard
+                  player={players[1]}
+                  isActive={currentPlayer === 1 && gamePhase === "playing"}
+                  isLandlord={false}
+                  isWinner={gamePhase === "end" && lastPlayerId === 1}
+                  isGameWinner={false}
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
+              </div>
+            </div>
 
-                return (
-                  <div key={pid} className={`played-cards-area pos-${pid}`}>
-                    {action.type === "pass" ? (
-                      <div className="pass-text">过牌</div>
-                    ) : (
-                      <div className="played-card-group">
-                        {action.cards?.map((card, idx) => (
-                          <div key={card.id} style={{ zIndex: idx }}>
-                            {renderCard(card, false, false, "small", -1)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* 中间游戏区域 (此处放一些中间信息，如大怪路子的计分信息等，目前为空) */}
+            <div className="center-area">
+              {/* 这里可以放一些中间的装饰或信息 */}
+            </div>
+
+            {/* 右侧两个电脑玩家 - 顺时针：4(右上), 5(右下) */}
+            <div className="side-player right">
+              <div className="side-player-item">
+                <PlayerCard
+                  player={players[4]}
+                  isActive={currentPlayer === 4 && gamePhase === "playing"}
+                  isLandlord={false}
+                  isWinner={gamePhase === "end" && lastPlayerId === 4}
+                  isGameWinner={false}
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
+              </div>
+              <div className="side-player-item">
+                <PlayerCard
+                  player={players[5]}
+                  isActive={currentPlayer === 5 && gamePhase === "playing"}
+                  isLandlord={false}
+                  isWinner={gamePhase === "end" && lastPlayerId === 5}
+                  isGameWinner={false}
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
+              </div>
             </div>
           </div>
-
-          {/* 右侧两个电脑玩家 - 顺时针：4(右上), 5(右下) */}
-          <div className="right-players">
-            <div className="side-player">
-              <PlayerCard
-                player={players[4]}
-                isActive={currentPlayer === 4 && gamePhase === "playing"}
-                isLandlord={false}
-                isWinner={gamePhase === "end" && lastPlayerId === 4}
-                isGameWinner={false}
-                showRemainingCards={gamePhase === "end"}
-                renderCard={renderCard}
-              />
-            </div>
-            <div className="side-player">
-              <PlayerCard
-                player={players[5]}
-                isActive={currentPlayer === 5 && gamePhase === "playing"}
-                isLandlord={false}
-                isWinner={gamePhase === "end" && lastPlayerId === 5}
-                isGameWinner={false}
-                showRemainingCards={gamePhase === "end"}
-                renderCard={renderCard}
-              />
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* 底部玩家手牌 - 独立于 game-table，占据全宽 */}
         {gamePhase !== "init" && (

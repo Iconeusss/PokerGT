@@ -465,8 +465,8 @@ const DouDiZhu: React.FC = () => {
         } else if (score >= 20) {
           call = Math.random() > 0.4;
         }
-        callLandlord(call); 
-      }, 1200);  //AI叫地主
+        callLandlord(call);
+      }, 1200); //AI叫地主
       return () => clearTimeout(timer);
     }
     if (gamePhase === "playing" && currentPlayer !== 0) {
@@ -479,7 +479,7 @@ const DouDiZhu: React.FC = () => {
         );
         if (aiCards) handlePlay(currentPlayer, aiCards);
         else handlePass(currentPlayer);
-      }, 1200);  // AI出牌
+      }, 1200); // AI出牌
       return () => clearTimeout(timer);
     }
   }, [gamePhase, currentPlayer, lastPlayedCards]);
@@ -1132,75 +1132,75 @@ const DouDiZhu: React.FC = () => {
           </div>
         )}
 
-        <div className="game-area">
-          <div className="side-player left">
-            {players[1] && (
-              <PlayerCard
-                player={players[1]}
-                isActive={
-                  currentPlayer === 1 &&
-                  (gamePhase === "playing" || gamePhase === "bidding")
-                }
-                isLandlord={players[1].isLandlord}
-                isWinner={gamePhase === "end" && lastPlayerId === 1}
-                isGameWinner={false}
-                showRemainingCards={gamePhase === "end"}
-                renderCard={renderCard}
-              />
-            )}
-          </div>
-          <div className="center-area">
-            <div className="table-area">
-              <h3 className="table-title">
-                当前牌面{" "}
-                {gamePhase !== "init" && (
+        {gamePhase !== "init" && (
+          <div className="game-area">
+            <div className="side-player left">
+              {players[1] && (
+                <PlayerCard
+                  player={players[1]}
+                  isActive={
+                    currentPlayer === 1 &&
+                    (gamePhase === "playing" || gamePhase === "bidding")
+                  }
+                  isLandlord={players[1].isLandlord}
+                  isWinner={gamePhase === "end" && lastPlayerId === 1}
+                  isGameWinner={false}
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                />
+              )}
+            </div>
+            <div className="center-area">
+              <div className="table-area">
+                <h3 className="table-title">
+                  当前牌面{" "}
                   <span className="game-stats-inline">
                     轮次: {Math.floor(totalTurns / 3) + 1}
                   </span>
+                </h3>
+                {lastPlayedCards.length > 0 ? (
+                  <>
+                    <p className="table-info">
+                      {players[lastPlayerId]?.name} 出的牌
+                    </p>
+                    <div
+                      className={`table-cards ${
+                        lastPlayedCards.length <= 5
+                          ? "scale-large"
+                          : lastPlayedCards.length <= 10
+                            ? "scale-medium"
+                            : "scale-small"
+                      }`}
+                    >
+                      {lastPlayedCards.map((c) =>
+                        renderCard(c, false, false, "normal"),
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="table-empty">等待出牌...</p>
                 )}
-              </h3>
-              {lastPlayedCards.length > 0 ? (
-                <>
-                  <p className="table-info">
-                    {players[lastPlayerId]?.name} 出的牌
-                  </p>
-                  <div
-                    className={`table-cards ${
-                      lastPlayedCards.length <= 5
-                        ? "scale-large"
-                        : lastPlayedCards.length <= 10
-                          ? "scale-medium"
-                          : "scale-small"
-                    }`}
-                  >
-                    {lastPlayedCards.map((c) =>
-                      renderCard(c, false, false, "normal"),
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="table-empty">等待出牌...</p>
+              </div>
+            </div>
+            <div className="side-player right">
+              {players[2] && (
+                <PlayerCard
+                  player={players[2]}
+                  isActive={
+                    currentPlayer === 2 &&
+                    (gamePhase === "playing" || gamePhase === "bidding")
+                  }
+                  isLandlord={players[2].isLandlord}
+                  isWinner={gamePhase === "end" && lastPlayerId === 2}
+                  isGameWinner={false}
+                  showRemainingCards={gamePhase === "end"}
+                  renderCard={renderCard}
+                  reverseCards
+                />
               )}
             </div>
           </div>
-          <div className="side-player right">
-            {players[2] && (
-              <PlayerCard
-                player={players[2]}
-                isActive={
-                  currentPlayer === 2 &&
-                  (gamePhase === "playing" || gamePhase === "bidding")
-                }
-                isLandlord={players[2].isLandlord}
-                isWinner={gamePhase === "end" && lastPlayerId === 2}
-                isGameWinner={false}
-                showRemainingCards={gamePhase === "end"}
-                renderCard={renderCard}
-                reverseCards
-              />
-            )}
-          </div>
-        </div>
+        )}
 
         {(gamePhase === "playing" ||
           gamePhase === "bidding" ||

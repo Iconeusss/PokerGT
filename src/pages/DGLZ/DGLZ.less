@@ -230,9 +230,9 @@ body,
 }
 
 // 消息框 (Toast 风格)
-.message-box {
+.message-box-dglz {
   position: fixed;
-  top: 64%;
+  bottom: 24%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
@@ -1427,165 +1427,160 @@ body,
   }
 }
 
-// 游戏桌布局 (6人布局)
-.game-table {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: stretch;
-  flex: 1;
-  gap: 1rem;
-  margin-top: 3rem;
-  padding: 1rem;
-  min-height: 0;
+// 游戏主区域
+.game-area {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  flex: 1;
+  min-height: 550px; // 保持足够高度以便出牌展示
 
   @media (max-width: 768px) {
-    gap: 0.5rem;
-    margin-top: 2.5rem;
-    padding: 0.5rem;
+    gap: 0.25rem;
+    min-height: 0;
+  }
+}
+
+// 出牌展示区域 (覆盖在游戏区域之上)
+.played-cards-container {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+// 顶部电脑玩家
+.top-player {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(260px, 90%);
+  z-index: 10;
+}
+
+// 侧边电脑玩家 (左右)
+.side-player {
+  flex: 0 0 140px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; // 改为 center 并配合 gap
+  gap: 8rem; // 增加玩家之间的间距
+  height: 100%;
+
+  &.left {
+    order: 1;
+  }
+  &.right {
+    order: 3;
   }
 
-  // 左侧玩家区域 - 在 game-table 内定义确保优先级
-  .left-players {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-    flex: 0 0 140px;
-    z-index: 10;
-    order: 1; // 明确指定顺序
-
-    @media (max-width: 768px) {
-      flex: 0 0 80px;
-    }
-  }
-
-  // 中间游戏区域 - 在 game-table 内定义确保优先级
-  .center-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    min-width: 0;
-    gap: 1rem;
-    order: 2; // 明确指定顺序
-    height: 100%;
-    padding: 0.5rem 0;
-
-    // 顶部玩家 - 覆盖 GD.less 的绝对定位
-    .top-player {
-      position: relative !important;
-      top: auto !important;
-      left: auto !important;
-      transform: none !important;
-      flex-shrink: 0;
-      width: min(260px, 90%);
-    }
-
-    // 出牌展示区域 - 6人版本
-    .played-cards-container {
-      position: relative;
-      flex: 1;
-      width: 100%;
-      min-height: 200px;
-    }
-
-    // 各玩家位置的出牌区 (顺时针: 0底→1左下→2左上→3顶→4右上→5右下)
-    // 出牌显示在玩家面前，靠近玩家卡片
-    .played-cards-area {
-      position: absolute;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 20;
-      pointer-events: none;
-
-      // 玩家0 - 底部（自己）- 靠近手牌上方
-      &.pos-0 {
-        bottom: 5%;
-        left: 50%;
-        transform: translateX(-50%);
-      }
-
-      // 玩家1 - 左下 - 靠近左下玩家右侧
-      &.pos-1 {
-        bottom: 35%;
-        left: 12%;
-        flex-direction: row-reverse;
-      }
-
-      // 玩家2 - 左上 - 靠近左上玩家右侧
-      &.pos-2 {
-        top: 35%;
-        left: 12%;
-        flex-direction: row-reverse;
-      }
-
-      // 玩家3 - 顶部中间 - 靠近顶部玩家下方
-      &.pos-3 {
-        top: 20%;
-        left: 50%;
-        transform: translateX(-50%);
-      }
-
-      // 玩家4 - 右上 - 靠近右上玩家左侧
-      &.pos-4 {
-        top: 35%;
-        right: 12%;
-      }
-
-      // 玩家5 - 右下 - 靠近右下玩家左侧
-      &.pos-5 {
-        bottom: 35%;
-        right: 12%;
-      }
-    }
-
-    // 过牌文字
-    .pass-text {
-      background: rgba(0, 0, 0, 0.6);
-      color: #fbbf24;
-      padding: 0.3rem 0.8rem;
-      border-radius: 0.5rem;
-      font-weight: bold;
-      font-size: 0.9rem;
-    }
-
-    // 出牌卡片组
-    .played-card-group {
-      display: flex;
-      gap: 0;
-
-      > div {
-        margin-left: -1.5rem;
-
-        &:first-child {
-          margin-left: 0;
-        }
-      }
-    }
-  }
-
-  // 右侧玩家区域 - 在 game-table 内定义确保优先级
-  .right-players {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-    flex: 0 0 140px;
-    z-index: 10;
-    order: 3; // 明确指定顺序
-
-    @media (max-width: 768px) {
-      flex: 0 0 80px;
-    }
-  }
-
-  // 左右侧玩家容器
-  .side-player {
+  .side-player-item {
     display: flex;
     justify-content: center;
     align-items: center;
+  }
+
+  @media (max-width: 768px) {
+    flex: 0 0 80px;
+  }
+}
+
+// 中间占据剩余空间
+.center-area {
+  flex: 1;
+  min-width: 0;
+  z-index: 1;
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+// 各玩家位置的出牌区 (顺时针: 0底→1左下→2左上→3顶→4右上→5右下)
+.played-cards-area-dglz {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+
+  // 玩家0 - 底部（自己）
+  &.pos-0 {
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  // 玩家1 - 左下
+  &.pos-1 {
+    bottom: 32%;
+    left: 15%;
+  }
+
+  // 玩家2 - 左上
+  &.pos-2 {
+    top: 32%;
+    left: 15%;
+  }
+
+  // 玩家3 - 顶部
+  &.pos-3 {
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  // 玩家4 - 右上
+  &.pos-4 {
+    top: 32%;
+    right: 15%;
+  }
+
+  // 玩家5 - 右下
+  &.pos-5 {
+    bottom: 32%;
+    right: 15%;
+  }
+}
+
+// 过牌文字
+.pass-text {
+  background: rgba(255, 255, 255, 0.95);
+  color: #000;
+  padding: 0.5rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: bold;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+// 出牌卡片组
+.played-card-group {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0;
+
+  > div {
+    margin-left: -1rem;
+    position: relative;
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+
+  .card {
+    transform: none !important;
   }
 }
 

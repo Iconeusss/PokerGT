@@ -1648,16 +1648,20 @@ body,
     display: flex;
     // Overlap handling for played cards
 
-    .card {
-      margin-left: -30px; // Overlap
-      transform-origin: center;
+    > div {
+      margin-left: -20px; // Overlap
 
       &:first-child {
         margin-left: 0;
       }
+    }
 
+    .card {
+      transform-origin: center;
+
+      // 出牌区使用正常大小
       &.small {
-        transform: scale(0.85);
+        transform: scale(1.1);
       }
     }
   }
