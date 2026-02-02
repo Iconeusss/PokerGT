@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PlayerCard from "../../components/Card/PlayerCard";
+import ScoreBoard from "./components/ScoreBoard";
 import { playsByAI } from "./ai/dglzAI";
 import "./DGLZ.less";
 
@@ -534,6 +535,11 @@ const DaGuaiLuZi: React.FC = () => {
   // 完成游戏的玩家顺序
   const [finishedOrder, setFinishedOrder] = useState<number[]>([]);
 
+  // 积分状态
+  const [scores, setScores] = useState<number[]>([0, 0, 0, 0, 0, 0]);
+  const [roundScores, setRoundScores] = useState<number[] | null>(null);
+  const [showScoreBoard, setShowScoreBoard] = useState(false);
+
   // 排序状态
   const [sortOptions, setSortOptions] = useState({
     mode: "value" as SortMode,
@@ -584,6 +590,34 @@ const DaGuaiLuZi: React.FC = () => {
     return undefined;
   };
 
+  // 计算得分
+  const calculateScores = (finalFinishedOrder: number[]) => {
+    // 找出最后一名（不在 finishedOrder 中的那个）
+    const allPlayers = [0, 1, 2, 3, 4, 5];
+    const lastPlayer = allPlayers.find((p) => !finalFinishedOrder.includes(p));
+    
+    // 完整排名
+    const fullOrder = lastPlayer !== undefined 
+      ? [...finalFinishedOrder, lastPlayer]
+      : finalFinishedOrder;
+
+    // 积分规则：头家+3, 二家+2, 三家+1, 四家-1, 五家-2, 末家-3
+    const scoreMap = [3, 2, 1, -1, -2, -3];
+    
+    const newRoundScores = [0, 0, 0, 0, 0, 0];
+    fullOrder.forEach((pid, rank) => {
+      newRoundScores[pid] = scoreMap[rank] || 0;
+    });
+    
+    setRoundScores(newRoundScores);
+    setScores(prev => prev.map((s, i) => s + newRoundScores[i]));
+    
+    // 延迟显示积分板
+    setTimeout(() => {
+        setShowScoreBoard(true);
+    }, 1500);
+  };
+
   // 开始游戏
   const startGame = () => {
     const newPlayers = dealCards(initPlayers(), sortMode, sortDirection);
@@ -595,6 +629,8 @@ const DaGuaiLuZi: React.FC = () => {
     setLastPlayerId(-1);
     setPassCount(0);
     setFinishedOrder([]);
+    setRoundScores(null);
+    setShowScoreBoard(false);
     setMessage("游戏开始！玩家1的回合，请出牌。");
   };
 
@@ -740,6 +776,7 @@ const DaGuaiLuZi: React.FC = () => {
       if (newFinishedOrder.length >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
         setMessage(`游戏结束！`);
         setGamePhase("end");
+        calculateScores(newFinishedOrder);
         return;
       }
     }
@@ -1365,10 +1402,7 @@ const DaGuaiLuZi: React.FC = () => {
               </button>
               <button
                 className="btn btn-purple"
-                onClick={() => {
-                  // TODO: 积分表功能
-                  setMessage("积分表功能开发中...");
-                }}
+                onClick={() => setShowScoreBoard(true)}
               >
                 积分表
               </button>
@@ -1666,6 +1700,15 @@ const DaGuaiLuZi: React.FC = () => {
           </div>
         )}
       </div>
+      {/* 积分板 */}
+      {showScoreBoard && (
+        <ScoreBoard
+          scores={scores}
+          roundScores={roundScores}
+          onClose={() => setShowScoreBoard(false)}
+          onRestart={gamePhase === "end" ? startGame : undefined}
+        />
+      )}
     </div>
   );
 };
