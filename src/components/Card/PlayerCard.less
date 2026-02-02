@@ -177,6 +177,19 @@
     }
   }
 
+  .player-rank-badge {
+    display: inline-block;
+    background: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+    font-weight: bold;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
   @media (max-width: 768px) {
     width: 100%;
     min-width: 0;
@@ -185,6 +198,11 @@
     .player-name {
       font-size: 0.8rem;
       margin-bottom: 0.2rem;
+    }
+
+    .player-rank-badge {
+      font-size: 0.65rem;
+      padding: 0.05rem 0.2rem;
     }
 
     .player-cards-count {
@@ -208,6 +226,7 @@
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px dashed rgba(255, 255, 255, 0.2);
+    min-height: 2.5rem; // 保持固定高度，防止抖动
   }
 
   // 卡背容器
@@ -215,6 +234,8 @@
     display: flex;
     gap: 2px;
     align-items: center;
+    width: 80px; // 增加宽度，避免太窄
+    justify-content: center;
   }
 
   // 数量徽章

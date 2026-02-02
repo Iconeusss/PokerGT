@@ -1,0 +1,137 @@
+.scoreboard-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.scoreboard-content {
+  background: linear-gradient(135deg, #1a1c29 0%, #2a2d42 100%);
+  border: 2px solid #4a4e69;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 800px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: white;
+  animation: modal-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.scoreboard-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #ffd700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.scoreboard-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 2rem;
+
+  th,
+  td {
+    padding: 1rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  th {
+    background-color: rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+    color: #a0a4b8;
+    
+    &:first-child {
+      border-top-left-radius: 8px;
+    }
+    
+    &:last-child {
+      border-top-right-radius: 8px;
+    }
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.player-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-badge {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  
+  &.team-a {
+    background-color: rgba(66, 133, 244, 0.3);
+    color: #8ab4f8;
+    border: 1px solid rgba(66, 133, 244, 0.5);
+  }
+  
+  &.team-b {
+    background-color: rgba(234, 67, 53, 0.3);
+    color: #f28b82;
+    border: 1px solid rgba(234, 67, 53, 0.5);
+  }
+}
+
+.score-value {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1.2rem;
+  font-weight: bold;
+  
+  &.positive {
+    color: #4caf50;
+  }
+  
+  &.negative {
+    color: #f44336;
+  }
+}
+
+.total-score {
+  font-size: 1.5rem;
+}
+
+.scoreboard-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.btn-close {
+  background-color: transparent;
+  border: 1px solid #4a4e69;
+  color: #a0a4b8;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+  }
+}

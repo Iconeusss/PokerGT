@@ -4,7 +4,6 @@ import PlayerCard from "../../components/Card/PlayerCard";
 import { playsByAI } from "./ai/dglzAI";
 import "./DGLZ.less";
 
-// --- 基础接口与常量 ---
 export interface Card {
   suit: string;
   rank: string;
@@ -22,10 +21,10 @@ interface Player {
 
 // 游戏常量
 const GAME_CONSTANTS = {
-  PLAYER_COUNT: 6, // 6人游戏（1个用户 + 5个电脑）
-  DECK_COUNT: 3, // 3副牌
-  CARDS_PER_PLAYER: 27, // 每人27张牌
-  TOTAL_CARDS: 162, // 3副牌共162张
+  PLAYER_COUNT: 6, 
+  DECK_COUNT: 3, 
+  CARDS_PER_PLAYER: 27, 
+  TOTAL_CARDS: 162,
 };
 
 const suits = ["♠", "♥", "♣", "♦"];
@@ -62,12 +61,11 @@ const rankValues: { [key: string]: number } = {
   JOKER: 17,
 };
 
-// --- 工具函数 ---
-// 创建多副牌
-const createDeck = (deckCount: number = 1): Card[] => {
+// 创建牌库
+const createDeck = (suffix: string, deckCount: number = 1): Card[] => {
   const deck: Card[] = [];
   for (let d = 0; d < deckCount; d++) {
-    const deckSuffix = deckCount > 1 ? `-${d + 1}` : "";
+    const deckSuffix = deckCount > 1 ? `${suffix}-${d + 1}` : suffix;
     suits.forEach((suit) =>
       ranks.forEach((rank) => {
         deck.push({
@@ -110,10 +108,8 @@ const sortCardsWithOptions = (
   if (mode === "value") {
     // 按大小排序
     if (direction === "default") {
-      // 降序（大到小）
       cardsCopy.sort((a, b) => b.value - a.value);
     } else {
-      // 升序（小到大）
       cardsCopy.sort((a, b) => a.value - b.value);
     }
   } else {
@@ -176,7 +172,7 @@ const dealCards = (
   sortMode: SortMode,
   sortDirection: SortDirection,
 ): Player[] => {
-  const deck = shuffleDeck(createDeck(GAME_CONSTANTS.DECK_COUNT));
+  const deck = shuffleDeck(createDeck("deck", GAME_CONSTANTS.DECK_COUNT));
   const newPlayers = players.map((player, index) => {
     const startIdx = index * GAME_CONSTANTS.CARDS_PER_PLAYER;
     const endIdx = startIdx + GAME_CONSTANTS.CARDS_PER_PLAYER;
@@ -190,7 +186,7 @@ const dealCards = (
   return newPlayers;
 };
 
-// --- 牌型判断 ---
+// 牌型判断
 interface CardType {
   type: string; // 牌型名称
   typeRank: number; // 牌型排名（5张牌用，1-6）
@@ -198,7 +194,7 @@ interface CardType {
   count: number; // 牌数
 }
 
-// 判断是否是王（万能牌）
+// 判断大小怪（万能牌）
 const isJoker = (card: Card): boolean => {
   return card.rank === "joker" || card.rank === "JOKER";
 };
@@ -225,12 +221,12 @@ const getDGLZType = (cards: Card[]): CardType | null => {
     .map(Number)
     .sort((a, b) => a - b);
 
-  // === 1张：单张 ===
+  // 单张
   if (len === 1) {
     return { type: "single", typeRank: 0, value: cards[0].value, count: 1 };
   }
 
-  // === 2张：对子 ===
+  // 对子 
   if (len === 2) {
     // 两个王不能组成对子（王只能配普通牌）
     if (jokerCount === 2) return null;
@@ -248,7 +244,7 @@ const getDGLZType = (cards: Card[]): CardType | null => {
     return null;
   }
 
-  // === 3张：三条 ===
+  // 三条
   if (len === 3) {
     // 检查是否能组成三条
     if (
@@ -280,7 +276,7 @@ const getDGLZType = (cards: Card[]): CardType | null => {
     return null;
   }
 
-  // === 5张：六种牌型 ===
+  // 五张：六种牌型
   if (len === 5) {
     const allSameSuit =
       normalCards.length === 0 ||
@@ -307,15 +303,10 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       let neededJokers = 0;
       for (let v = minVal; v <= minVal + 4; v++) {
         if (v > 14) return null; // 超出A
-        if (!normalValues.includes(v)) {
-          neededJokers++;
-        }
+        if (!normalValues.includes(v)) neededJokers++;
       }
 
-      if (neededJokers <= jokerCount) {
-        // 王在顺子中算最大值
-        return minVal + 4;
-      }
+      if (neededJokers <= jokerCount) return minVal + 4; // 王在顺子中算最大值
 
       // 尝试其他起始位置
       for (let start = 3; start <= 10; start++) {
@@ -331,15 +322,13 @@ const getDGLZType = (cards: Card[]): CardType | null => {
             }
           }
         }
-        if (canForm) {
-          return start + 4; // 返回顺子最大值
-        }
+        if (canForm) return start + 4; // 返回顺子最大值
       }
 
       return null;
     };
 
-    // 1. 五条（最大）：5张相同点数
+    // 1. 五条
     if (
       uniqueValues.length === 1 &&
       counts[uniqueValues[0]] + jokerCount === 5
@@ -362,7 +351,7 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       }
     }
 
-    // 2. 同花顺：相同花色的顺子
+    // 2. 同花顺
     const straightMax = checkStraight();
     if (straightMax !== null && allSameSuit) {
       return {
@@ -373,7 +362,7 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       };
     }
 
-    // 3. 炸弹：四带一
+    // 3. 炸弹
     for (const val of uniqueValues) {
       if (counts[val] + jokerCount >= 4 && counts[val] < 5) {
         const usedJokers = Math.max(0, 4 - counts[val]);
@@ -394,7 +383,7 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       };
     }
 
-    // 4. 葫芦：三带二
+    // 4. 葫芦
     for (const tripleVal of uniqueValues) {
       const tripleCount = counts[tripleVal];
       if (tripleCount + jokerCount >= 3) {
@@ -449,13 +438,18 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       }
     }
 
-    // 5. 同花：相同花色任意5张
+    // 5. 同花
     if (allSameSuit && normalCards.length >= 1) {
-      const maxValue = Math.max(...cards.map((c) => c.value));
-      return { type: "flush", typeRank: 2, value: maxValue, count: 5 };
+      // 计算同花权重：按点数从大到小排序，计算20进制值，确保逐张比大小
+      const sortedValues = cards.map((c) => c.value).sort((a, b) => b - a);
+      let weight = 0;
+      for (const v of sortedValues) {
+        weight = weight * 20 + v;
+      }
+      return { type: "flush", typeRank: 2, value: weight, count: 5 };
     }
 
-    // 6. 杂顺：不同花色的顺子
+    // 6. 杂顺
     if (straightMax !== null && !allSameSuit) {
       return { type: "straight", typeRank: 1, value: straightMax, count: 5 };
     }
@@ -537,6 +531,8 @@ const DaGuaiLuZi: React.FC = () => {
   const [playerActions, setPlayerActions] = useState<
     Record<number, { type: "play" | "pass"; cards?: Card[] }>
   >({});
+  // 完成游戏的玩家顺序
+  const [finishedOrder, setFinishedOrder] = useState<number[]>([]);
 
   // 排序状态
   const [sortOptions, setSortOptions] = useState({
@@ -571,6 +567,23 @@ const DaGuaiLuZi: React.FC = () => {
     sortFlipPendingRef.current = true;
   };
 
+  // 获取玩家名次名称
+  const getPlayerRankName = (pid: number) => {
+    // 如果玩家在完成列表中，直接返回名次
+    const orderIndex = finishedOrder.indexOf(pid);
+    if (orderIndex !== -1) {
+      const ranks = ["头家", "二家", "三家", "四家", "五家", "末家"];
+      return ranks[orderIndex] || "";
+    }
+
+    // 如果不在完成列表中，但游戏已结束，说明是末家
+    if (gamePhase === "end") {
+      return "末家";
+    }
+
+    return undefined;
+  };
+
   // 开始游戏
   const startGame = () => {
     const newPlayers = dealCards(initPlayers(), sortMode, sortDirection);
@@ -581,6 +594,7 @@ const DaGuaiLuZi: React.FC = () => {
     setLastPlayedCards([]);
     setLastPlayerId(-1);
     setPassCount(0);
+    setFinishedOrder([]);
     setMessage("游戏开始！玩家1的回合，请出牌。");
   };
 
@@ -677,6 +691,23 @@ const DaGuaiLuZi: React.FC = () => {
     handlePlay(0, selected);
   };
 
+  // 获取下一个还在游戏中的玩家
+  const getNextActivePlayer = (
+    currentId: number,
+    finished: number[],
+  ): number => {
+    let next = (currentId + 1) % GAME_CONSTANTS.PLAYER_COUNT;
+    let loopCount = 0;
+    while (
+      finished.includes(next) &&
+      loopCount < GAME_CONSTANTS.PLAYER_COUNT
+    ) {
+      next = (next + 1) % GAME_CONSTANTS.PLAYER_COUNT;
+      loopCount++;
+    }
+    return next;
+  };
+
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
     const newPlayers = [...players];
     newPlayers[playerId].cards = newPlayers[playerId].cards.filter(
@@ -699,42 +730,80 @@ const DaGuaiLuZi: React.FC = () => {
       return newState;
     });
 
+    const newFinishedOrder = [...finishedOrder];
     if (newPlayers[playerId].cards.length === 0) {
-      setMessage(`🎉 ${newPlayers[playerId].name} 获胜！`);
-      setGamePhase("end");
-      return;
+      if (!newFinishedOrder.includes(playerId)) {
+        newFinishedOrder.push(playerId);
+        setFinishedOrder(newFinishedOrder);
+      }
+
+      if (newFinishedOrder.length >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
+        setMessage(`游戏结束！`);
+        setGamePhase("end");
+        return;
+      }
     }
 
-    const nextPlayer = (playerId + 1) % GAME_CONSTANTS.PLAYER_COUNT;
+    const nextPlayer = getNextActivePlayer(playerId, newFinishedOrder);
     setCurrentPlayer(nextPlayer);
-    setMessage(
-      `${players[playerId].name} 出牌，轮到${players[nextPlayer].name}`,
-    );
+
+    const cardType = getDGLZType(cardsToPlay);
+    const typeName = cardType ? getCNTypeName(cardType.type) : "牌";
+
+    // 获取名次名称
+    const getRankName = (orderIndex: number) => {
+      const ranks = ["头家", "二家", "三家", "四家", "五家", "末家"];
+      return ranks[orderIndex] || "";
+    };
+
+    let msg = `${players[playerId].name} 出牌： ${typeName}`;
+    if (newPlayers[playerId].cards.length === 0) {
+      const rankIdx = newFinishedOrder.indexOf(playerId);
+      msg += ` (${getRankName(rankIdx)})`;
+    }
+    // msg += `，轮到${players[nextPlayer].name}`;
+    setMessage(msg);
   };
 
   const handlePass = () => {
+    const activePlayerCount =
+      GAME_CONSTANTS.PLAYER_COUNT - finishedOrder.length;
     const newPassCount = passCount + 1;
-    setPassCount(newPassCount);
-    const nextPlayer = (currentPlayer + 1) % GAME_CONSTANTS.PLAYER_COUNT;
 
-    // 设置当前玩家的过牌动作
-    setPlayerActions((prev) => ({
-      ...prev,
-      [currentPlayer]: { type: "pass" },
-    }));
-
-    if (newPassCount >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
+    // 如果所有其他在场玩家都过牌了（activePlayerCount - 1），则一轮结束
+    if (newPassCount >= activePlayerCount - 1) {
       setLastPlayedCards([]);
       setPassCount(0);
+
+      let nextLead = lastPlayerId;
+      // 如果上家已经出完牌了，由上家的下家接风
+      if (finishedOrder.includes(lastPlayerId)) {
+        nextLead = getNextActivePlayer(lastPlayerId, finishedOrder);
+        setMessage(`上家已出完，${players[nextLead].name} 接风`);
+      } else {
+        if (finishedOrder.includes(nextLead)) {
+          nextLead = getNextActivePlayer(nextLead, finishedOrder);
+        }
+        setMessage(`${players[nextLead].name} 获得出牌权`);
+      }
+
       setLastPlayerId(-1); // 重置上家ID
       // 清除所有玩家的动作状态，新一轮开始
       setPlayerActions({});
-      setMessage(`${players[nextPlayer].name} 获得出牌权`);
+      setCurrentPlayer(nextLead);
     } else {
-      setMessage(`${players[currentPlayer].name} 过牌`);
-    }
+      setPassCount(newPassCount);
+      const nextPlayer = getNextActivePlayer(currentPlayer, finishedOrder);
 
-    setCurrentPlayer(nextPlayer);
+      // 设置当前玩家的过牌动作
+      setPlayerActions((prev) => ({
+        ...prev,
+        [currentPlayer]: { type: "pass" },
+      }));
+
+      setMessage(`${players[currentPlayer].name} 过牌`);
+      setCurrentPlayer(nextPlayer);
+    }
   };
 
   // 轮到玩家出牌时，清除该玩家上一轮的动作显示
@@ -753,6 +822,7 @@ const DaGuaiLuZi: React.FC = () => {
   useEffect(() => {
     if (gamePhase !== "playing") return;
     if (currentPlayer === 0) return; // 玩家回合不处理
+    if (finishedOrder.includes(currentPlayer)) return; // 已完成的玩家不思考
 
     const aiDelay = setTimeout(() => {
       const aiPlayer = players[currentPlayer];
@@ -774,37 +844,55 @@ const DaGuaiLuZi: React.FC = () => {
 
       if (aiCards && aiCards.length > 0) {
         // AI出牌
-        const cardType = getDGLZType(aiCards);
-        const typeName = cardType ? getCNTypeName(cardType.type) : "";
-        setMessage(`${aiPlayer.name} 出了 ${typeName}`);
         handlePlay(currentPlayer, aiCards);
       } else {
         // AI过牌
+        const activePlayerCount =
+          GAME_CONSTANTS.PLAYER_COUNT - finishedOrder.length;
         const newPassCount = passCount + 1;
-        setPassCount(newPassCount);
-        const nextPlayer = (currentPlayer + 1) % GAME_CONSTANTS.PLAYER_COUNT;
 
-        setPlayerActions((prev) => ({
-          ...prev,
-          [currentPlayer]: { type: "pass" },
-        }));
-
-        if (newPassCount >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
+        if (newPassCount >= activePlayerCount - 1) {
           setLastPlayedCards([]);
           setPassCount(0);
+
+          let nextLead = lastPlayerId;
+          if (finishedOrder.includes(lastPlayerId)) {
+            nextLead = getNextActivePlayer(lastPlayerId, finishedOrder);
+            setMessage(`上家已出完，${players[nextLead].name} 接风`);
+          } else {
+            if (finishedOrder.includes(nextLead)) {
+              nextLead = getNextActivePlayer(nextLead, finishedOrder);
+            }
+            setMessage(`${players[nextLead].name} 获得出牌权`);
+          }
+
           setLastPlayerId(-1); // 重置上家ID
           setPlayerActions({});
-          setMessage(`${players[nextPlayer].name} 获得出牌权`);
+          setCurrentPlayer(nextLead);
         } else {
-          setMessage(`${aiPlayer.name} 过牌`);
-        }
+          setPassCount(newPassCount);
+          const nextPlayer = getNextActivePlayer(currentPlayer, finishedOrder);
 
-        setCurrentPlayer(nextPlayer);
+          setPlayerActions((prev) => ({
+            ...prev,
+            [currentPlayer]: { type: "pass" },
+          }));
+          setMessage(`${aiPlayer.name} 过牌`);
+          setCurrentPlayer(nextPlayer);
+        }
       }
     }, 800); // AI思考延迟
 
     return () => clearTimeout(aiDelay);
-  }, [currentPlayer, gamePhase, players, lastPlayedCards, passCount]);
+  }, [
+    currentPlayer,
+    gamePhase,
+    players,
+    lastPlayedCards,
+    passCount,
+    finishedOrder,
+    lastPlayerId,
+  ]);
 
   // 处理触摸滑动
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -1325,26 +1413,45 @@ const DaGuaiLuZi: React.FC = () => {
             <div className="played-cards-container">
               {[0, 1, 2, 3, 4, 5].map((pid) => {
                 const action = playerActions[pid];
-                if (!action) return null;
+                const rankName = getPlayerRankName(pid);
+                const isFinished = !!rankName && rankName !== "末家";
+
+                if (!action && !rankName) return null;
 
                 return (
                   <div
                     key={pid}
                     className={`played-cards-area-dglz pos-${pid}`}
+                    style={{
+                      flexDirection: "column", // 垂直排列，以便同时显示牌和名次
+                      gap: "0.5rem",
+                    }}
                   >
-                    {action.type === "pass" ? (
-                      <div className="pass-text">过牌</div>
-                    ) : (
-                      <div className="played-card-group">
-                        {[...(action.cards || [])]
-                          .sort((a, b) => a.value - b.value)
-                          .map((card, idx) => (
-                            <div key={card.id} style={{ zIndex: idx }}>
-                              {renderCard(card, false, false, "small", -1)}
-                            </div>
-                          ))}
-                      </div>
+                    {/* 显示名次徽章 (如果有) */}
+                    {isFinished && (
+                      <div className="rank-text-badge">{rankName}</div>
                     )}
+                    
+                    {/* 显示末家徽章 */}
+                    {rankName === "末家" && (
+                      <div className="rank-text-badge">{rankName}</div>
+                    )}
+
+                    {/* 显示出牌动作 */}
+                    {action &&
+                      (action.type === "pass" ? (
+                        <div className="pass-text">过牌</div>
+                      ) : (
+                        <div className="played-card-group">
+                          {[...(action.cards || [])]
+                            .sort((a, b) => a.value - b.value)
+                            .map((card, idx) => (
+                              <div key={card.id} style={{ zIndex: idx }}>
+                                {renderCard(card, false, false, "small", -1)}
+                              </div>
+                            ))}
+                        </div>
+                      ))}
                   </div>
                 );
               })}
@@ -1356,7 +1463,7 @@ const DaGuaiLuZi: React.FC = () => {
                 player={players[3]}
                 isActive={currentPlayer === 3 && gamePhase === "playing"}
                 isLandlord={false}
-                isWinner={gamePhase === "end" && lastPlayerId === 3}
+                isWinner={gamePhase === "end" && finishedOrder[0] === 3}
                 isGameWinner={false}
                 showRemainingCards={gamePhase === "end"}
                 renderCard={renderCard}
@@ -1370,7 +1477,7 @@ const DaGuaiLuZi: React.FC = () => {
                   player={players[2]}
                   isActive={currentPlayer === 2 && gamePhase === "playing"}
                   isLandlord={false}
-                  isWinner={gamePhase === "end" && lastPlayerId === 2}
+                  isWinner={gamePhase === "end" && finishedOrder[0] === 2}
                   isGameWinner={false}
                   showRemainingCards={gamePhase === "end"}
                   renderCard={renderCard}
@@ -1381,7 +1488,7 @@ const DaGuaiLuZi: React.FC = () => {
                   player={players[1]}
                   isActive={currentPlayer === 1 && gamePhase === "playing"}
                   isLandlord={false}
-                  isWinner={gamePhase === "end" && lastPlayerId === 1}
+                  isWinner={gamePhase === "end" && finishedOrder[0] === 1}
                   isGameWinner={false}
                   showRemainingCards={gamePhase === "end"}
                   renderCard={renderCard}
@@ -1401,7 +1508,7 @@ const DaGuaiLuZi: React.FC = () => {
                   player={players[4]}
                   isActive={currentPlayer === 4 && gamePhase === "playing"}
                   isLandlord={false}
-                  isWinner={gamePhase === "end" && lastPlayerId === 4}
+                  isWinner={gamePhase === "end" && finishedOrder[0] === 4}
                   isGameWinner={false}
                   showRemainingCards={gamePhase === "end"}
                   renderCard={renderCard}
@@ -1412,7 +1519,7 @@ const DaGuaiLuZi: React.FC = () => {
                   player={players[5]}
                   isActive={currentPlayer === 5 && gamePhase === "playing"}
                   isLandlord={false}
-                  isWinner={gamePhase === "end" && lastPlayerId === 5}
+                  isWinner={gamePhase === "end" && finishedOrder[0] === 5}
                   isGameWinner={false}
                   showRemainingCards={gamePhase === "end"}
                   renderCard={renderCard}
@@ -1426,7 +1533,7 @@ const DaGuaiLuZi: React.FC = () => {
         {gamePhase !== "init" && (
           <div
             className={`player-hand ${currentPlayer === 0 ? "active" : ""} ${
-              gamePhase === "end" && lastPlayerId === 0 ? "winner" : ""
+              gamePhase === "end" && finishedOrder[0] === 0 ? "winner" : ""
             }`}
             style={{ position: "relative" }}
           >
@@ -1451,6 +1558,14 @@ const DaGuaiLuZi: React.FC = () => {
               </div>
 
               <h3 className="hand-title">
+                {/* {getPlayerRankName(0) && (
+                  <span
+                    className="player-rank-badge"
+                    style={{ marginRight: "0.5rem", fontSize: "1rem" }}
+                  >
+                    {getPlayerRankName(0)}
+                  </span>
+                )} */}
                 剩余: {players[0].cards.length} 张
                 <span className="player-stats-inline">
                   出牌: {players[0].playCount || 0}
