@@ -22,9 +22,9 @@ interface Player {
 
 // 游戏常量
 const GAME_CONSTANTS = {
-  PLAYER_COUNT: 6, 
-  DECK_COUNT: 3, 
-  CARDS_PER_PLAYER: 27, 
+  PLAYER_COUNT: 6,
+  DECK_COUNT: 3,
+  CARDS_PER_PLAYER: 27,
   TOTAL_CARDS: 162,
 };
 
@@ -227,7 +227,7 @@ const getDGLZType = (cards: Card[]): CardType | null => {
     return { type: "single", typeRank: 0, value: cards[0].value, count: 1 };
   }
 
-  // 对子 
+  // 对子
   if (len === 2) {
     // 两个王不能组成对子（王只能配普通牌）
     if (jokerCount === 2) return null;
@@ -247,32 +247,19 @@ const getDGLZType = (cards: Card[]): CardType | null => {
 
   // 三条
   if (len === 3) {
-    // 检查是否能组成三条
-    if (
-      uniqueValues.length === 1 &&
-      counts[uniqueValues[0]] + jokerCount === 3
-    ) {
-      return { type: "triple", typeRank: 0, value: uniqueValues[0], count: 3 };
-    }
-    if (
-      uniqueValues.length === 1 &&
-      jokerCount > 0 &&
-      counts[uniqueValues[0]] + jokerCount >= 3
-    ) {
-      return { type: "triple", typeRank: 0, value: uniqueValues[0], count: 3 };
-    }
-    // 多个点数但王够用
-    if (jokerCount >= 3 - normalCards.length && uniqueValues.length <= 1) {
-      const tripleValue = uniqueValues.length > 0 ? uniqueValues[0] : 0;
-      return { type: "triple", typeRank: 0, value: tripleValue, count: 3 };
-    }
-    // 两种点数，王凑成三条
-    if (uniqueValues.length === 2) {
-      for (const val of uniqueValues) {
-        if (counts[val] + jokerCount >= 3) {
-          return { type: "triple", typeRank: 0, value: val, count: 3 };
-        }
+    // 找一个点数，使其自然牌 + joker 能凑成三条
+    for (const val of uniqueValues) {
+      const natural = counts[val];
+      const jokersNeeded = Math.max(0, 3 - natural);
+      const otherNatural = normalCards.length - natural;
+      // joker 必须够凑三条，且剩余自然牌为0（不能有多余的牌）
+      if (jokersNeeded <= jokerCount && otherNatural === 0) {
+        return { type: "triple", typeRank: 0, value: val, count: 3 };
       }
+    }
+    // 特殊情况：3个王
+    if (jokerCount === 3 && normalCards.length === 0) {
+      return { type: "triple", typeRank: 0, value: 0, count: 3 };
     }
     return null;
   }
@@ -287,69 +274,55 @@ const getDGLZType = (cards: Card[]): CardType | null => {
     const checkStraight = (): number | null => {
       if (normalCards.length === 0) return null; // 5个王不能组顺子
 
-      const normalValues = normalCards
-        .map((c) => c.value)
-        .filter((v) => v <= 14); // 排除2和王
-      if (normalValues.length === 0) return null;
+      // 2 (value=15) 不能参与顺子，含2直接返回null
+      if (normalCards.some((c) => c.value > 14)) return null;
+
+      // 统计每个值的频次，用于处理三副牌中的重复牌
+      const valueCounts: { [key: number]: number } = {};
+      normalCards.forEach((c) => {
+        valueCounts[c.value] = (valueCounts[c.value] || 0) + 1;
+      });
 
       // 顺子范围：3-7 到 10-A (值 3-7 到 10-14)
-      const sortedNormal = [...normalValues].sort((a, b) => a - b);
-      const minVal = sortedNormal[0];
-      const maxVal = sortedNormal[sortedNormal.length - 1];
-
-      // 检查范围是否有效（3-14之间）
-      if (minVal < 3 || maxVal > 14) return null;
-
-      // 检查能否用王补成顺子
-      let neededJokers = 0;
-      for (let v = minVal; v <= minVal + 4; v++) {
-        if (v > 14) return null; // 超出A
-        if (!normalValues.includes(v)) neededJokers++;
-      }
-
-      if (neededJokers <= jokerCount) return minVal + 4; // 王在顺子中算最大值
-
-      // 尝试其他起始位置
+      // 尝试所有可能的起始位置
       for (let start = 3; start <= 10; start++) {
         let needed = 0;
-        let canForm = true;
+        const usedCounts: { [key: number]: number } = {};
+
         for (let i = 0; i < 5; i++) {
           const targetVal = start + i;
-          if (!normalValues.includes(targetVal)) {
+          const available =
+            (valueCounts[targetVal] || 0) - (usedCounts[targetVal] || 0);
+          if (available > 0) {
+            usedCounts[targetVal] = (usedCounts[targetVal] || 0) + 1;
+          } else {
             needed++;
-            if (needed > jokerCount) {
-              canForm = false;
-              break;
-            }
           }
         }
-        if (canForm) return start + 4; // 返回顺子最大值
+
+        // 使用的自然牌数 + joker数 必须恰好等于5
+        const usedNormal = Object.values(usedCounts).reduce((a, b) => a + b, 0);
+        if (
+          needed <= jokerCount &&
+          usedNormal + jokerCount === 5 &&
+          usedNormal + needed === 5
+        ) {
+          return start + 4; // 返回顺子最大值
+        }
       }
 
       return null;
     };
 
-    // 1. 五条
-    if (
-      uniqueValues.length === 1 &&
-      counts[uniqueValues[0]] + jokerCount === 5
-    ) {
-      return {
-        type: "five_of_kind",
-        typeRank: 6,
-        value: uniqueValues[0],
-        count: 5,
-      };
-    }
-    if (uniqueValues.length <= 1 && jokerCount >= 5 - normalCards.length) {
-      const fiveValue = uniqueValues.length > 0 ? uniqueValues[0] : 17; // 5个王
-      return { type: "five_of_kind", typeRank: 6, value: fiveValue, count: 5 };
-    }
-    // 检查能否用王凑成五条
+    // 1. 五条：某个点数的自然牌 + joker >= 5
     for (const val of uniqueValues) {
       if (counts[val] + jokerCount >= 5) {
         return { type: "five_of_kind", typeRank: 6, value: val, count: 5 };
       }
+    }
+    // 特殊情况：5个王
+    if (jokerCount >= 5 && normalCards.length === 0) {
+      return { type: "five_of_kind", typeRank: 6, value: 17, count: 5 };
     }
 
     // 2. 同花顺
@@ -363,19 +336,21 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       };
     }
 
-    // 3. 炸弹
+    // 3. 炸弹（四带一）
     for (const val of uniqueValues) {
-      if (counts[val] + jokerCount >= 4 && counts[val] < 5) {
-        const usedJokers = Math.max(0, 4 - counts[val]);
-        const remaining = jokerCount - usedJokers;
-        const otherCards = normalCards.filter((c) => c.value !== val);
-        if (otherCards.length + remaining === 1) {
-          return { type: "bomb", typeRank: 4, value: val, count: 5 };
-        }
+      const natural = counts[val];
+      if (natural >= 5) continue; // 5张相同应该是五条，已在前面处理
+      const jokersNeeded = Math.max(0, 4 - natural);
+      if (jokersNeeded > jokerCount) continue; // joker 不够凑四条
+      const otherNatural = normalCards.length - natural;
+      const remainingJokers = jokerCount - jokersNeeded;
+      // 第5张牌 = 其他自然牌 + 剩余joker，必须恰好为1
+      if (otherNatural + remainingJokers === 1) {
+        return { type: "bomb", typeRank: 4, value: val, count: 5 };
       }
     }
-    // 4个王+1普通牌
-    if (jokerCount === 4 && normalCards.length === 1) {
+    // 特殊情况：4个joker + 1张普通牌
+    if (jokerCount >= 4 && normalCards.length === 1) {
       return {
         type: "bomb",
         typeRank: 4,
@@ -384,57 +359,39 @@ const getDGLZType = (cards: Card[]): CardType | null => {
       };
     }
 
-    // 4. 葫芦
+    // 4. 葫芦（三带二）
     for (const tripleVal of uniqueValues) {
-      const tripleCount = counts[tripleVal];
-      if (tripleCount + jokerCount >= 3) {
-        const usedJokersForTriple = Math.max(0, 3 - tripleCount);
-        const remainingJokers = jokerCount - usedJokersForTriple;
-        const otherCards = normalCards.filter((c) => c.value !== tripleVal);
+      const natural = counts[tripleVal];
+      const jokersForTriple = Math.max(0, 3 - natural);
+      if (jokersForTriple > jokerCount) continue;
 
-        // 检查剩余能否组成对子
-        const otherCounts: { [key: number]: number } = {};
-        otherCards.forEach((c) => {
-          otherCounts[c.value] = (otherCounts[c.value] || 0) + 1;
-        });
+      const remainingJokers = jokerCount - jokersForTriple;
+      const otherNaturals = normalCards.filter((c) => c.value !== tripleVal);
 
-        for (const pairVal of Object.keys(otherCounts).map(Number)) {
-          if (
-            otherCounts[pairVal] + remainingJokers >= 2 &&
-            otherCounts[pairVal] + remainingJokers - 2 ===
-              otherCards.length - otherCounts[pairVal]
-          ) {
-            if (otherCards.length + remainingJokers === 2) {
-              return {
-                type: "fullhouse",
-                typeRank: 3,
-                value: tripleVal,
-                count: 5,
-              };
-            }
-          }
-        }
-        // 简化检查：剩余2张能组成对子
-        if (otherCards.length + remainingJokers === 2) {
-          if (
-            otherCards.length === 2 &&
-            otherCards[0].value === otherCards[1].value
-          ) {
-            return {
-              type: "fullhouse",
-              typeRank: 3,
-              value: tripleVal,
-              count: 5,
-            };
-          }
-          if (remainingJokers >= 1 && otherCards.length <= 2) {
-            return {
-              type: "fullhouse",
-              typeRank: 3,
-              value: tripleVal,
-              count: 5,
-            };
-          }
+      // 剩余牌必须恰好2张（对子部分）
+      if (otherNaturals.length + remainingJokers !== 2) continue;
+
+      // 检查能否组成对子
+      if (otherNaturals.length === 0) {
+        // 2个joker组成对子：不合法（两个王不能组对子）
+        continue;
+      } else if (otherNaturals.length === 1) {
+        // 1张普通+1个joker：合法对子
+        return {
+          type: "fullhouse",
+          typeRank: 3,
+          value: tripleVal,
+          count: 5,
+        };
+      } else {
+        // 2张普通牌：必须同点数
+        if (otherNaturals[0].value === otherNaturals[1].value) {
+          return {
+            type: "fullhouse",
+            typeRank: 3,
+            value: tripleVal,
+            count: 5,
+          };
         }
       }
     }
@@ -595,26 +552,27 @@ const DaGuaiLuZi: React.FC = () => {
     // 找出最后一名（不在 finishedOrder 中的那个）
     const allPlayers = [0, 1, 2, 3, 4, 5];
     const lastPlayer = allPlayers.find((p) => !finalFinishedOrder.includes(p));
-    
+
     // 完整排名
-    const fullOrder = lastPlayer !== undefined 
-      ? [...finalFinishedOrder, lastPlayer]
-      : finalFinishedOrder;
+    const fullOrder =
+      lastPlayer !== undefined
+        ? [...finalFinishedOrder, lastPlayer]
+        : finalFinishedOrder;
 
     // 积分规则：头家+3, 二家+2, 三家+1, 四家-1, 五家-2, 末家-3
     const scoreMap = [3, 2, 1, -1, -2, -3];
-    
+
     const newRoundScores = [0, 0, 0, 0, 0, 0];
     fullOrder.forEach((pid, rank) => {
       newRoundScores[pid] = scoreMap[rank] || 0;
     });
-    
+
     setRoundScores(newRoundScores);
-    setScores(prev => prev.map((s, i) => s + newRoundScores[i]));
-    
+    setScores((prev) => prev.map((s, i) => s + newRoundScores[i]));
+
     // 延迟显示积分板
     setTimeout(() => {
-        setShowScoreBoard(true);
+      setShowScoreBoard(true);
     }, 1500);
   };
 
@@ -734,10 +692,7 @@ const DaGuaiLuZi: React.FC = () => {
   ): number => {
     let next = (currentId + 1) % GAME_CONSTANTS.PLAYER_COUNT;
     let loopCount = 0;
-    while (
-      finished.includes(next) &&
-      loopCount < GAME_CONSTANTS.PLAYER_COUNT
-    ) {
+    while (finished.includes(next) && loopCount < GAME_CONSTANTS.PLAYER_COUNT) {
       next = (next + 1) % GAME_CONSTANTS.PLAYER_COUNT;
       loopCount++;
     }
@@ -883,40 +838,8 @@ const DaGuaiLuZi: React.FC = () => {
         // AI出牌
         handlePlay(currentPlayer, aiCards);
       } else {
-        // AI过牌
-        const activePlayerCount =
-          GAME_CONSTANTS.PLAYER_COUNT - finishedOrder.length;
-        const newPassCount = passCount + 1;
-
-        if (newPassCount >= activePlayerCount - 1) {
-          setLastPlayedCards([]);
-          setPassCount(0);
-
-          let nextLead = lastPlayerId;
-          if (finishedOrder.includes(lastPlayerId)) {
-            nextLead = getNextActivePlayer(lastPlayerId, finishedOrder);
-            setMessage(`上家已出完，${players[nextLead].name} 接风`);
-          } else {
-            if (finishedOrder.includes(nextLead)) {
-              nextLead = getNextActivePlayer(nextLead, finishedOrder);
-            }
-            setMessage(`${players[nextLead].name} 获得出牌权`);
-          }
-
-          setLastPlayerId(-1); // 重置上家ID
-          setPlayerActions({});
-          setCurrentPlayer(nextLead);
-        } else {
-          setPassCount(newPassCount);
-          const nextPlayer = getNextActivePlayer(currentPlayer, finishedOrder);
-
-          setPlayerActions((prev) => ({
-            ...prev,
-            [currentPlayer]: { type: "pass" },
-          }));
-          setMessage(`${aiPlayer.name} 过牌`);
-          setCurrentPlayer(nextPlayer);
-        }
+        // AI过牌，复用 handlePass 逻辑
+        handlePass();
       }
     }, 800); // AI思考延迟
 
@@ -1465,7 +1388,7 @@ const DaGuaiLuZi: React.FC = () => {
                     {isFinished && (
                       <div className="rank-text-badge">{rankName}</div>
                     )}
-                    
+
                     {/* 显示末家徽章 */}
                     {rankName === "末家" && (
                       <div className="rank-text-badge">{rankName}</div>
