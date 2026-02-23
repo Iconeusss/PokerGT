@@ -679,10 +679,13 @@ const DaGuaiLuZi: React.FC = () => {
 
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
     const newPlayers = [...players];
-    newPlayers[playerId].cards = newPlayers[playerId].cards.filter(
-      (card) => !cardsToPlay.find((c) => c.id === card.id),
-    );
-    newPlayers[playerId].playCount = (newPlayers[playerId].playCount || 0) + 1;
+    newPlayers[playerId] = {
+      ...newPlayers[playerId],
+      cards: newPlayers[playerId].cards.filter(
+        (card) => !cardsToPlay.find((c) => c.id === card.id),
+      ),
+      playCount: (newPlayers[playerId].playCount || 0) + 1,
+    };
 
     setPlayers(newPlayers);
     setLastPlayedCards(cardsToPlay);
@@ -780,26 +783,7 @@ const DaGuaiLuZi: React.FC = () => {
         handlePlay(currentPlayer, aiCards);
       } else {
         // AI过牌
-        const newPassCount = passCount + 1;
-        setPassCount(newPassCount);
-        const nextPlayer = (currentPlayer + 1) % GAME_CONSTANTS.PLAYER_COUNT;
-
-        setPlayerActions((prev) => ({
-          ...prev,
-          [currentPlayer]: { type: "pass" },
-        }));
-
-        if (newPassCount >= GAME_CONSTANTS.PLAYER_COUNT - 1) {
-          setLastPlayedCards([]);
-          setPassCount(0);
-          setLastPlayerId(-1); // 重置上家ID
-          setPlayerActions({});
-          setMessage(`${players[nextPlayer].name} 获得出牌权`);
-        } else {
-          setMessage(`${aiPlayer.name} 过牌`);
-        }
-
-        setCurrentPlayer(nextPlayer);
+        handlePass();
       }
     }, 800); // AI思考延迟
 
