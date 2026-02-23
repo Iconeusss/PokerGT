@@ -35,6 +35,7 @@ export interface PlayerCardProps {
   ) => React.ReactNode;
   className?: string;
   reverseCards?: boolean;
+  rankText?: string;
 }
 
 const PlayerCard: React.FC<PlayerCardProps> = ({
@@ -47,6 +48,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
   renderCard,
   className = "",
   reverseCards = false,
+  rankText,
 }) => {
   if (!player) return null;
 
@@ -67,7 +69,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
 
   return (
     <div className={classNames}>
-      <h3 className="player-name">{player.name}</h3>
+      <h3 className="player-name">
+        {player.name}
+        {rankText && <span className="player-rank-badge"> {rankText}</span>}
+      </h3>
       <p className="player-stats">出牌: {player.playCount || 0}</p>
 
       {!showRemainingCards && player.cards.length > 0 && (

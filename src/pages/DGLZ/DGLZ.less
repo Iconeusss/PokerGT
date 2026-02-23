@@ -1563,6 +1563,36 @@ body,
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// 排名徽章文字 (出现在出牌区)
+.rank-text-badge {
+  background: rgba(255, 234, 76, 0.95); 
+  color: black;
+  padding: 0.5rem 1.5rem;
+  border-radius: 1rem;
+  font-weight: bold;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 30; // 确保在牌之上
+}
+
 // 出牌卡片组
 .played-card-group {
   display: flex;

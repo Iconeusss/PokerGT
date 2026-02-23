@@ -47,6 +47,7 @@ const GAME_CONSTANTS = {
   CARDS_PER_PLAYER: 27,
   TOTAL_CARDS: 108,
   PLAYER_COUNT: 4,
+  DECK_COUNT: 2,
   MAX_ROUNDS: 7,
   AI_PLAY_DELAY_MS: 900,
   ROUND_END_DELAY_MS: 1600,
@@ -1001,7 +1002,7 @@ const GuanDan: React.FC = () => {
   };
 
   const createPlayersForRound = (activeLevel: LevelRank): Player[] => {
-    const deck = shuffleDeck(createDeck("deck", 2));
+    const deck = shuffleDeck(createDeck("deck", GAME_CONSTANTS.DECK_COUNT));
     const hands: Card[][] = [
       deck.slice(0, 27),
       deck.slice(27, 54),
