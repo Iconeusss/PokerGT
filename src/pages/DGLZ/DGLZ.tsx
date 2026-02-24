@@ -624,6 +624,7 @@ const DaGuaiLuZi: React.FC = () => {
     setLastPlayerId(-1);
     setPassCount(0);
     setFinishedOrder([]);
+    // setPlayerActions({});
 
     setShowScoreBoard(false);
     setMessage("游戏开始！玩家1的回合，请出牌。");
@@ -936,6 +937,11 @@ const DaGuaiLuZi: React.FC = () => {
     setGamePhase("end");
     setShowScoreBoard(true);
     setMessage("DEV: 测试积分表");
+
+    // 5秒后自动开始下一局
+    setTimeout(() => {
+      startGame();
+    }, 5000);
   };
 
   // 处理触摸滑动

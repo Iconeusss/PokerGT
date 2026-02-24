@@ -1,29 +1,10 @@
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home/Home";
 import DouDiZhu from "./pages/DDZ/DDZ";
 import GuanDanGame from "./pages/GD/GD";
 import DaGuaiLuZi from "./pages/DGLZ/DGLZ";
+import Home2 from "./pages/Home2/Home2";
 import "./App.less";
-
-function Home() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="home-container-poker">
-      <h1 className="home-title">PokerGT</h1>
-      <div className="game-select">
-        <button className="game-btn ddz-btn" onClick={() => navigate("/ddz")}>
-          斗地主
-        </button>
-        <button className="game-btn gd-btn" onClick={() => navigate("/gd")}>
-          掼蛋
-        </button>
-        <button className="game-btn dglz-btn" onClick={() => navigate("/dglz")}>
-          大怪路子
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function App() {
   return (
@@ -33,6 +14,7 @@ function App() {
         <Route path="/ddz" element={<DouDiZhu />} />
         <Route path="/gd" element={<GuanDanGame />} />
         <Route path="/dglz" element={<DaGuaiLuZi />} />
+        <Route path="/home2" element={<Home2 />} />
       </Routes>
     </BrowserRouter>
   );

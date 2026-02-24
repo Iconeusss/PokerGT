@@ -1,0 +1,190 @@
+@import "../../variables.less";
+
+.home-container-poker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  /* 
+    红: #fee2e2 (red-100)
+    绿: #dcfce7 (green-100)
+    蓝: #dbeafe (blue-100)
+  */
+  background: linear-gradient(135deg, #fee2e2, #dbeafe, #dcfce7);
+  color: #1f2937; /* 灰色 800，深色文字以保证对比度 */
+}
+
+.home-title {
+  position: absolute;
+  top: 1rem;
+  left: 1.5rem;
+  font-family: "IM Fell English SC", serif;
+  font-size: 4.5rem;
+  font-weight: 400;
+  margin: 0;
+  color: #d97706;
+  letter-spacing: 0.06em;
+  text-shadow:
+    0 1px 0 #b45309,
+    0 2px 0 #92400e,
+    0 3px 0 #78350f,
+    0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.game-select {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+.game-btn {
+  padding: 1.5rem 3rem;
+  font-size: 1.5rem;
+  border: none;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  color: white;
+  font-weight: bold;
+  min-width: 200px;
+}
+
+.game-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ddz-btn {
+  background: linear-gradient(
+    135deg,
+    @color-background-ddz,
+    @color-background-ddz-light
+  );
+  box-shadow: 0 4px 6px rgba(26, 77, 46, 0.4);
+}
+
+.gd-btn {
+  background: linear-gradient(
+    135deg,
+    @color-background-gd,
+    @color-background-gd-light
+  );
+  box-shadow: 0 4px 6px rgba(74, 4, 4, 0.4);
+}
+
+.dglz-btn {
+  background: linear-gradient(
+    135deg,
+    @color-background-dglz,
+    @color-background-dglz-light
+  );
+  box-shadow: 0 4px 6px rgba(74, 4, 4, 0.4);
+}
+
+/* 用户菜单 */
+.user-menu {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.5rem;
+  z-index: 100;
+}
+
+.user-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition:
+    background 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+
+.user-menu:hover .user-icon {
+  background: #fff;
+  color: #374151;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  min-width: 120px;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 0.4rem 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s,
+    visibility 0.2s;
+}
+
+.user-menu:hover .user-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+/* Theme switch button */
+.theme-switch-btn {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 1.5rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  color: #374151;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition:
+    background 0.2s,
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.theme-switch-btn:hover {
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
