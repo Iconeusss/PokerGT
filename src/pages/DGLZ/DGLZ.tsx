@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PlayerCard from "../../components/Card/PlayerCard";
-import ScoreBoard from "./components/ScoreBoard";
 import { playsByAI } from "./ai/dglzAI";
 import "./DGLZ.less";
 
@@ -492,10 +491,11 @@ const DaGuaiLuZi: React.FC = () => {
   // 完成游戏的玩家顺序
   const [finishedOrder, setFinishedOrder] = useState<number[]>([]);
 
-  // 积分状态
-  const [scores, setScores] = useState<number[]>([0, 0, 0, 0, 0, 0]);
-  const [roundScores, setRoundScores] = useState<number[] | null>(null);
+  // 积分状态（团队制：[队伍A, 队伍B]）
+  const [teamScores, setTeamScores] = useState<[number, number]>([0, 0]);
+  const [rankHistory, setRankHistory] = useState<number[][]>([]); // 每局的完整排名顺序
   const [showScoreBoard, setShowScoreBoard] = useState(false);
+  const [scoreboardTab, setScoreboardTab] = useState<"rank" | "team">("rank");
 
   // 排序状态
   const [sortOptions, setSortOptions] = useState({
@@ -547,7 +547,10 @@ const DaGuaiLuZi: React.FC = () => {
     return undefined;
   };
 
-  // 计算得分
+  // 获取玩家所在队伍（0,2,4 = 队伍0；1,3,5 = 队伍1）
+  const getTeamId = (pid: number) => pid % 2;
+
+  // 计算得分（团队制）
   const calculateScores = (finalFinishedOrder: number[]) => {
     // 找出最后一名（不在 finishedOrder 中的那个）
     const allPlayers = [0, 1, 2, 3, 4, 5];
@@ -559,21 +562,55 @@ const DaGuaiLuZi: React.FC = () => {
         ? [...finalFinishedOrder, lastPlayer]
         : finalFinishedOrder;
 
-    // 积分规则：头家+3, 二家+2, 三家+1, 四家-1, 五家-2, 末家-3
-    const scoreMap = [3, 2, 1, -1, -2, -3];
+    // 记录排名历史
+    setRankHistory((prev) => [...prev, fullOrder]);
 
-    const newRoundScores = [0, 0, 0, 0, 0, 0];
-    fullOrder.forEach((pid, rank) => {
-      newRoundScores[pid] = scoreMap[rank] || 0;
+    // A组 = 头家所在队伍
+    const headPlayerId = fullOrder[0];
+    const teamA = getTeamId(headPlayerId);
+
+    // 找到A组最后一个完成的位置
+    let lastAPosition = 0;
+    fullOrder.forEach((pid, pos) => {
+      if (getTeamId(pid) === teamA) {
+        lastAPosition = pos;
+      }
     });
 
-    setRoundScores(newRoundScores);
-    setScores((prev) => prev.map((s, i) => s + newRoundScores[i]));
+    // 计算被抓获的B组人数（在A组最后一人之后的B组成员）
+    let captured = 0;
+    for (let i = lastAPosition + 1; i < fullOrder.length; i++) {
+      if (getTeamId(fullOrder[i]) !== teamA) {
+        captured++;
+      }
+    }
 
-    // 延迟显示积分板
+    // 积分规则：抓获3→8, 2→5, 1→3, 0→1
+    const captureScoreMap: Record<number, number> = { 3: 8, 2: 5, 1: 3, 0: 1 };
+    const score = captureScoreMap[captured] ?? 1;
+
+    setTeamScores((prev) => {
+      const next: [number, number] = [...prev];
+      next[teamA] += score;
+      return next;
+    });
+
+    // 在消息框显示本局结果
+    const teamName = teamA === 0 ? "蓝队" : "红队";
+    const captureDesc =
+      captured === 3
+        ? "全包"
+        : captured === 2
+          ? "抓获对方二家"
+          : captured === 1
+            ? "抓获对方一家"
+            : "未抓到人";
+    setMessage(`🏆 ${teamName}获胜！${captureDesc}，+${score}分`);
+
+    // 5秒后自动开始下一局
     setTimeout(() => {
-      setShowScoreBoard(true);
-    }, 1500);
+      startGame();
+    }, 5000);
   };
 
   // 开始游戏
@@ -587,7 +624,7 @@ const DaGuaiLuZi: React.FC = () => {
     setLastPlayerId(-1);
     setPassCount(0);
     setFinishedOrder([]);
-    setRoundScores(null);
+
     setShowScoreBoard(false);
     setMessage("游戏开始！玩家1的回合，请出牌。");
   };
@@ -822,6 +859,7 @@ const DaGuaiLuZi: React.FC = () => {
 
       const ctx = {
         currentPlayer,
+        lastPlayerId,
         passCount,
         playerCardCounts: players.map((p) => p.cards.length),
       };
@@ -853,6 +891,49 @@ const DaGuaiLuZi: React.FC = () => {
     finishedOrder,
     lastPlayerId,
   ]);
+
+  // DEV: 测试积分表
+  const testScoreTable = () => {
+    // 模拟多局不同抓获情况
+    const testOrders: number[][] = [
+      [0, 2, 4, 1, 3, 5], // 队伍A全包，抓获3，+8
+      [1, 3, 0, 5, 2, 4], // 队伍B全包，抓获3，+8
+      [0, 1, 2, 4, 3, 5], // 队伍A头家，抓获2，+5
+      [0, 1, 2, 3, 4, 5], // 队伍A头家，抓获1，+3
+      [0, 1, 3, 2, 5, 4], // 队伍A头家，抓获0，+1
+    ];
+
+    // 重置分数
+    setTeamScores([0, 0]);
+    setRankHistory([]);
+
+    // 逐局计算分数
+    let scores: [number, number] = [0, 0];
+    const history: number[][] = [];
+
+    for (const order of testOrders) {
+      history.push(order);
+
+      const headTeam = order[0] % 2;
+      let lastAPos = 0;
+      order.forEach((pid, pos) => {
+        if (pid % 2 === headTeam) lastAPos = pos;
+      });
+      let captured = 0;
+      for (let i = lastAPos + 1; i < order.length; i++) {
+        if (order[i] % 2 !== headTeam) captured++;
+      }
+      const capMap: Record<number, number> = { 3: 8, 2: 5, 1: 3, 0: 1 };
+      const sc = capMap[captured] ?? 1;
+      scores[headTeam] += sc;
+    }
+
+    setRankHistory(history);
+    setTeamScores(scores);
+    setGamePhase("end");
+    setShowScoreBoard(true);
+    setMessage("DEV: 测试积分表");
+  };
 
   // 处理触摸滑动
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -1307,7 +1388,6 @@ const DaGuaiLuZi: React.FC = () => {
       <div className="game-wrapper">
         {gamePhase === "init" && <h1 className="game-title">大怪路子</h1>}
 
-        {/* 左上角按钮组 */}
         <div className="button-group top-left">
           {gamePhase === "init" && (
             <button className="btn btn-home" onClick={() => setShowRules(true)}>
@@ -1333,12 +1413,10 @@ const DaGuaiLuZi: React.FC = () => {
           )}
         </div>
 
-        {/* 消息提示 */}
         <div className="message-box-dglz">
           <p className="message-text">{message}</p>
         </div>
 
-        {/* 右上角按钮组 */}
         <div className="button-group top-right">
           <button
             onClick={() => navigate("/")}
@@ -1348,13 +1426,23 @@ const DaGuaiLuZi: React.FC = () => {
             返回主页
           </button>
           {gamePhase !== "init" && (
-            <button onClick={startGame} className="btn btn-red">
-              重新开始
-            </button>
+            <>
+              <button
+                onClick={startGame}
+                className="btn btn-red btn-margin-bottom"
+              >
+                重新开始
+              </button>
+              <button
+                onClick={testScoreTable}
+                className="btn btn-primary btn-margin-bottom btn-test"
+              >
+                测试积分
+              </button>
+            </>
           )}
         </div>
 
-        {/* 开始游戏按钮 */}
         {gamePhase === "init" && (
           <div className="button-group">
             <button onClick={startGame} className="btn btn-blue">
@@ -1363,10 +1451,8 @@ const DaGuaiLuZi: React.FC = () => {
           </div>
         )}
 
-        {/* 游戏区域 */}
         {gamePhase !== "init" && (
           <div className="game-area">
-            {/* 出牌展示区域 - 覆盖在游戏区域之上 */}
             <div className="played-cards-container">
               {[0, 1, 2, 3, 4, 5].map((pid) => {
                 const action = playerActions[pid];
@@ -1384,17 +1470,14 @@ const DaGuaiLuZi: React.FC = () => {
                       gap: "0.5rem",
                     }}
                   >
-                    {/* 显示名次徽章 (如果有) */}
                     {isFinished && (
                       <div className="rank-text-badge">{rankName}</div>
                     )}
 
-                    {/* 显示末家徽章 */}
                     {rankName === "末家" && (
                       <div className="rank-text-badge">{rankName}</div>
                     )}
 
-                    {/* 显示出牌动作 */}
                     {action &&
                       (action.type === "pass" ? (
                         <div className="pass-text">过牌</div>
@@ -1414,7 +1497,6 @@ const DaGuaiLuZi: React.FC = () => {
               })}
             </div>
 
-            {/* 顶部电脑玩家 - 顺时针：3 */}
             <div className="top-player">
               <PlayerCard
                 player={players[3]}
@@ -1427,7 +1509,6 @@ const DaGuaiLuZi: React.FC = () => {
               />
             </div>
 
-            {/* 左侧两个电脑玩家 - 顺时针：2(左上), 1(左下) */}
             <div className="side-player left">
               <div className="side-player-item">
                 <PlayerCard
@@ -1453,12 +1534,8 @@ const DaGuaiLuZi: React.FC = () => {
               </div>
             </div>
 
-            {/* 中间游戏区域 (此处放一些中间信息，如大怪路子的计分信息等，目前为空) */}
-            <div className="center-area">
-              {/* 这里可以放一些中间的装饰或信息 */}
-            </div>
+            <div className="center-area">{/*   */}</div>
 
-            {/* 右侧两个电脑玩家 - 顺时针：4(右上), 5(右下) */}
             <div className="side-player right">
               <div className="side-player-item">
                 <PlayerCard
@@ -1486,7 +1563,6 @@ const DaGuaiLuZi: React.FC = () => {
           </div>
         )}
 
-        {/* 底部玩家手牌 - 独立于 game-table，占据全宽 */}
         {gamePhase !== "init" && (
           <div
             className={`player-hand ${currentPlayer === 0 ? "active" : ""} ${
@@ -1515,14 +1591,6 @@ const DaGuaiLuZi: React.FC = () => {
               </div>
 
               <h3 className="hand-title">
-                {/* {getPlayerRankName(0) && (
-                  <span
-                    className="player-rank-badge"
-                    style={{ marginRight: "0.5rem", fontSize: "1rem" }}
-                  >
-                    {getPlayerRankName(0)}
-                  </span>
-                )} */}
                 剩余: {players[0].cards.length} 张
                 <span className="player-stats-inline">
                   出牌: {players[0].playCount || 0}
@@ -1623,15 +1691,209 @@ const DaGuaiLuZi: React.FC = () => {
           </div>
         )}
       </div>
-      {/* 积分板 */}
-      {showScoreBoard && (
-        <ScoreBoard
-          scores={scores}
-          roundScores={roundScores}
-          onClose={() => setShowScoreBoard(false)}
-          onRestart={gamePhase === "end" ? startGame : undefined}
-        />
-      )}
+      {showScoreBoard &&
+        (() => {
+          const getTeamLabel = (t: number) => (t === 0 ? "蓝队" : "红队");
+          const getCaptureDesc = (c: number) =>
+            c === 3
+              ? "抓获对方三家"
+              : c === 2
+                ? "抓获对方二家"
+                : c === 1
+                  ? "抓获对方一家"
+                  : "未抓到人";
+          const rankNames = ["头家", "二家", "三家", "四家", "五家", "末家"];
+          const playerNames = players.map((p) => p.name);
+
+          return (
+            <div
+              className="scoreboard-modal"
+              onClick={() => setShowScoreBoard(false)}
+            >
+              <div
+                className="modal-content"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="modal-header">
+                  <h2>积分表</h2>
+                </div>
+
+                {/* 队伍总积分（始终显示） */}
+                <div className="team-scores-display">
+                  <div className="team-score-card team-a-card">
+                    <div className="team-card-name">蓝队 (玩家1, 3, 5)</div>
+                    <div className="team-total-score">{teamScores[0]}</div>
+                    <div className="team-score-label">总积分</div>
+                  </div>
+                  <div className="vs-divider">VS</div>
+                  <div className="team-score-card team-b-card">
+                    <div className="team-card-name">红队 (玩家2, 4, 6)</div>
+                    <div className="team-total-score">{teamScores[1]}</div>
+                    <div className="team-score-label">总积分</div>
+                  </div>
+                </div>
+
+                {/* Tab 切换 */}
+                <div className="scoreboard-tabs">
+                  <button
+                    className={`tab-btn ${scoreboardTab === "rank" ? "active" : ""}`}
+                    onClick={() => setScoreboardTab("rank")}
+                  >
+                    个人排名
+                  </button>
+                  <button
+                    className={`tab-btn ${scoreboardTab === "team" ? "active" : ""}`}
+                    onClick={() => setScoreboardTab("team")}
+                  >
+                    队伍积分
+                  </button>
+                </div>
+
+                <div className="score-table-container">
+                  {scoreboardTab === "rank" ? (
+                    /* 个人排名 */
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>局数</th>
+                          {playerNames.map((name, idx) => (
+                            <th key={idx}>
+                              <div className="player-col-header">
+                                <span>{name}</span>
+                                <span
+                                  className={`team-badge-inline ${idx % 2 === 0 ? "team-a" : "team-b"}`}
+                                >
+                                  {getTeamLabel(idx % 2)}
+                                </span>
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rankHistory.map((order, roundIdx) => (
+                          <tr key={roundIdx}>
+                            <td>第{roundIdx + 1}局</td>
+                            {playerNames.map((_, pid) => {
+                              const rankIdx = order.indexOf(pid);
+                              const rankName =
+                                rankIdx !== -1 ? rankNames[rankIdx] : "-";
+                              const isTop = rankIdx >= 0 && rankIdx <= 2;
+                              return (
+                                <td
+                                  key={pid}
+                                  className={isTop ? "rank-top" : "rank-bottom"}
+                                >
+                                  {rankName}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                        {gamePhase === "playing" && (
+                          <tr>
+                            <td>第{rankHistory.length + 1}局</td>
+                            <td colSpan={6} className="in-progress-cell">
+                              进行中
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    /* 队伍积分 */
+                    <div className="team-scores-section">
+                      {/* 队伍 */}
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>局数</th>
+                            <th>头家</th>
+                            <th>抓获情况</th>
+                            <th>蓝队</th>
+                            <th>红队</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rankHistory.map((order, roundIdx) => {
+                            const headPid = order[0];
+                            const headTeam = headPid % 2;
+                            let lastAPos = 0;
+                            order.forEach((pid, pos) => {
+                              if (pid % 2 === headTeam) lastAPos = pos;
+                            });
+                            let cap = 0;
+                            for (let i = lastAPos + 1; i < order.length; i++) {
+                              if (order[i] % 2 !== headTeam) cap++;
+                            }
+                            const capMap: Record<number, number> = {
+                              3: 8,
+                              2: 5,
+                              1: 3,
+                              0: 1,
+                            };
+                            const sc = capMap[cap] ?? 1;
+                            const blueScore = headTeam === 0 ? sc : 0;
+                            const redScore = headTeam === 1 ? sc : 0;
+
+                            return (
+                              <tr key={roundIdx}>
+                                <td>第{roundIdx + 1}局</td>
+                                <td>
+                                  <span
+                                    className={
+                                      headTeam === 0
+                                        ? "team-a-text"
+                                        : "team-b-text"
+                                    }
+                                  >
+                                    {playerNames[headPid]}
+                                  </span>
+                                </td>
+                                <td>{getCaptureDesc(cap)}</td>
+                                <td
+                                  className={
+                                    blueScore > 0 ? "score-positive" : ""
+                                  }
+                                >
+                                  {blueScore > 0 ? `${blueScore}` : "0"}
+                                </td>
+                                <td
+                                  className={
+                                    redScore > 0 ? "score-positive" : ""
+                                  }
+                                >
+                                  {redScore > 0 ? `${redScore}` : "0"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {gamePhase === "playing" && (
+                            <tr>
+                              <td>第{rankHistory.length + 1}局</td>
+                              <td colSpan={4} className="in-progress-cell">
+                                进行中
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="scoreboard-actions">
+                  <button
+                    className="btn btn-primary close-btn"
+                    onClick={() => setShowScoreBoard(false)}
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 };

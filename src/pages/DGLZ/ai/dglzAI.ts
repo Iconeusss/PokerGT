@@ -17,6 +17,7 @@ type CanBeatFunc = (played: Card[], last: Card[]) => boolean;
 // AI上下文
 interface AIContext {
   currentPlayer: number;
+  lastPlayerId: number;
   passCount: number;
   playerCardCounts: number[];
 }
@@ -99,7 +100,27 @@ const followPlay = (
 
   const sorted = [...hand].sort((a, b) => a.value - b.value);
 
+  // 检测是否是队友出的牌（同队 = pid % 2 相同）
+  const isTeammate =
+    ctx.lastPlayerId >= 0 && ctx.lastPlayerId % 2 === ctx.currentPlayer % 2;
+
   // 策略：如果有人快跑完牌了，AI 应该更倾向于压牌
+  const isEnemyWinning = ctx.playerCardCounts.some(
+    (count, idx) =>
+      idx !== ctx.currentPlayer &&
+      idx % 2 !== ctx.currentPlayer % 2 &&
+      count <= 3,
+  );
+
+  // 队友出的牌，且敌方没有快跑完的，温和处理
+  if (isTeammate && !isEnemyWinning) {
+    // 70% 概率直接过牌，让队友赢这一轮
+    if (Math.random() < 0.7) return null;
+
+    // 30% 概率尝试出稍微大一点的牌来卸手牌，但不用大牌
+    return findGentleBeatingCards(sorted, last, lastType, canBeat, getDGLZType);
+  }
+
   const isSomeoneWinning = ctx.playerCardCounts.some(
     (count, idx) => idx !== ctx.currentPlayer && count <= 3,
   );
@@ -123,6 +144,80 @@ const followPlay = (
     default:
       return null;
   }
+};
+
+// 温和压队友的牌：只出稍微大一点的牌，不用大牌、不拆组合、不用王
+const findGentleBeatingCards = (
+  sorted: Card[],
+  last: Card[],
+  lastType: CardType,
+  canBeat: CanBeatFunc,
+  _getDGLZType: GetDGLZTypeFunc,
+): Card[] | null => {
+  // 不用王牌压队友
+  const normalCards = sorted.filter((c) => !isJoker(c));
+  const groups = groupByValue(normalCards);
+
+  if (lastType.count === 1) {
+    // 单张：找比上家大但不超过3点的单张，且优先找落单的牌
+    for (const card of normalCards) {
+      if (
+        card.value > lastType.value &&
+        card.value <= lastType.value + 3 &&
+        canBeat([card], last)
+      ) {
+        // 优先出落单的牌（不拆对子或三条）
+        if (groups[card.value] && groups[card.value].length === 1) {
+          return [card];
+        }
+      }
+    }
+    // 没有落单的，尝试拆对子中的小牌
+    for (const card of normalCards) {
+      if (
+        card.value > lastType.value &&
+        card.value <= lastType.value + 3 &&
+        canBeat([card], last)
+      ) {
+        return [card];
+      }
+    }
+  } else if (lastType.count === 2) {
+    // 对子：找比上家大但不超过3点的对子
+    for (const [, cards] of Object.entries(groups).sort(
+      ([a], [b]) => Number(a) - Number(b),
+    )) {
+      if (
+        cards.length >= 2 &&
+        cards[0].value > lastType.value &&
+        cards[0].value <= lastType.value + 3
+      ) {
+        const pair = cards.slice(0, 2);
+        if (canBeat(pair, last)) return pair;
+      }
+    }
+  } else if (lastType.count === 3) {
+    // 三条：找比上家大但不超过3点的三条
+    for (const [, cards] of Object.entries(groups).sort(
+      ([a], [b]) => Number(a) - Number(b),
+    )) {
+      if (
+        cards.length >= 3 &&
+        cards[0].value > lastType.value &&
+        cards[0].value <= lastType.value + 3
+      ) {
+        const triple = cards.slice(0, 3);
+        if (canBeat(triple, last)) return triple;
+      }
+    }
+  } else if (lastType.count === 5) {
+    // 5张组合：只找同类型且稍微大一点的，不升级牌型
+    // 队友出的是5张组合，一般不压
+    return null;
+  }
+
+  // 找不到温和的牌就过牌
+  return null;
 };
 
 // 找最小的单张

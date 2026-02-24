@@ -1671,7 +1671,7 @@ const GuanDan: React.FC = () => {
         setMessage("不能还贡级牌");
         return;
       }
-      // 注：在代码中 10=10，J=11，所以 value <= 10 覆盖 2-10
+      //  10=10，J=11, value <= 10 覆盖 2-10
       const hasSmallCards = players[0].cards.some(
         (c) => c.value <= 10 && c.rank !== levelRank,
       );
@@ -2352,7 +2352,6 @@ const GuanDan: React.FC = () => {
 
         {gamePhase !== "init" && (
           <div className="game-area">
-            {/* 出牌展示区域 (覆盖在游戏区域之上) */}
             <div className="played-cards-container">
               {[0, 1, 2, 3].map((pid) => {
                 const action = playerActions[pid];
