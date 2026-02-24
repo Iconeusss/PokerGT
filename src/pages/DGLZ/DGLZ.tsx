@@ -738,10 +738,13 @@ const DaGuaiLuZi: React.FC = () => {
 
   const handlePlay = (playerId: number, cardsToPlay: Card[]) => {
     const newPlayers = [...players];
-    newPlayers[playerId].cards = newPlayers[playerId].cards.filter(
-      (card) => !cardsToPlay.find((c) => c.id === card.id),
-    );
-    newPlayers[playerId].playCount = (newPlayers[playerId].playCount || 0) + 1;
+    newPlayers[playerId] = {
+      ...newPlayers[playerId],
+      cards: newPlayers[playerId].cards.filter(
+        (card) => !cardsToPlay.find((c) => c.id === card.id),
+      ),
+      playCount: (newPlayers[playerId].playCount || 0) + 1,
+    };
 
     setPlayers(newPlayers);
     setLastPlayedCards(cardsToPlay);
@@ -876,7 +879,7 @@ const DaGuaiLuZi: React.FC = () => {
         // AI出牌
         handlePlay(currentPlayer, aiCards);
       } else {
-        // AI过牌，复用 handlePass 逻辑
+        // AI过牌
         handlePass();
       }
     }, 800); // AI思考延迟
