@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import AuthModal from "../../components/AuthModal/AuthModal";
 import "./home.less";
 
 function Home() {
   const navigate = useNavigate();
+  const { cycleTheme } = useTheme();
   const [showAuth, setShowAuth] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
 
@@ -48,7 +50,7 @@ function Home() {
           大怪路子
         </button>
       </div>
-      <button className="theme-switch-btn" onClick={() => navigate("/home2")}>
+      <button className="theme-switch-btn" onClick={cycleTheme}>
         🖥 Terminal Mode
       </button>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import "./home2.less";
 
 const SIGNALS = ["STRONG", "GOOD", "FAIR", "WEAK", "STRONG", "GOOD"] as const;
@@ -25,6 +26,7 @@ function pick<T>(arr: readonly T[]): T {
 
 function Home2() {
   const navigate = useNavigate();
+  const { cycleTheme } = useTheme();
 
   const [status, setStatus] = useState<{
     signal: (typeof SIGNALS)[number];
@@ -209,7 +211,7 @@ function Home2() {
                   {/* 斗地主 */}
                   <div
                     className="card-group card-group-green"
-                    onClick={() => navigate("/ddz2")}
+                    onClick={() => navigate("/ddz")}
                   >
                     <div className="card-wrapper">
                       <div className="card-shadow" />
@@ -319,7 +321,7 @@ function Home2() {
               <span className="keycard-label">Keycard</span>
             </div>
 
-            <button className="theme-switch-crt" onClick={() => navigate("/")}>
+            <button className="theme-switch-crt" onClick={cycleTheme}>
               ▸ CLASSIC
             </button>
 

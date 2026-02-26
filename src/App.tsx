@@ -1,23 +1,20 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home/Home";
-import DouDiZhu from "./pages/DDZ/DDZ";
 import GuanDanGame from "./pages/GD/GD";
 import DaGuaiLuZi from "./pages/DGLZ/DGLZ";
-import Home2 from "./pages/Home2/Home2";
-import DDZ2 from "./pages/DDZ2/DDZ2";
+import { ThemeProvider, ThemedPage } from "./context/ThemeContext";
 import "./App.less";
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/ddz" element={<DouDiZhu />} />
-        <Route path="/gd" element={<GuanDanGame />} />
-        <Route path="/dglz" element={<DaGuaiLuZi />} />
-        <Route path="/home2" element={<Home2 />} />
-        <Route path="/ddz2" element={<DDZ2 />} />
-      </Routes>
+      <ThemeProvider>
+        <Routes>
+          <Route path="/" element={<ThemedPage page="home" />} />
+          <Route path="/ddz" element={<ThemedPage page="ddz" />} />
+          <Route path="/gd" element={<GuanDanGame />} />
+          <Route path="/dglz" element={<DaGuaiLuZi />} />
+        </Routes>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

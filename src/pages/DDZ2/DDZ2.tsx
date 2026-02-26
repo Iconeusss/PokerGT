@@ -766,7 +766,7 @@ const DDZ2: React.FC = () => {
                 <div className="footer-session">
                   <button
                     className="footer-terminate"
-                    onClick={() => navigate("/home2")}
+                    onClick={() => navigate("/")}
                   >
                     ▸ TERMINATE
                   </button>
@@ -785,10 +785,7 @@ const DDZ2: React.FC = () => {
               <span className="keycard-label">Keycard</span>
             </div>
 
-            <button
-              className="theme-switch-crt"
-              onClick={() => navigate("/home2")}
-            >
+            <button className="theme-switch-crt" onClick={() => navigate("/")}>
               ▸ MENU
             </button>
 
