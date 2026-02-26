@@ -305,7 +305,7 @@ const DDZ2: React.FC = () => {
   const [totalTurns, setTotalTurns] = useState(0);
   const [sortOrder] = useState<"asc" | "desc">("desc");
 
-  const myCards = players[0].cards;
+  // const myCards = players[0].cards;
 
   const startGame = () => {
     const deck = shuffleDeck(createDeck());
