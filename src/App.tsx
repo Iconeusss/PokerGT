@@ -4,6 +4,7 @@ import DouDiZhu from "./pages/DDZ/DDZ";
 import GuanDanGame from "./pages/GD/GD";
 import DaGuaiLuZi from "./pages/DGLZ/DGLZ";
 import Home2 from "./pages/Home2/Home2";
+import DDZ2 from "./pages/DDZ2/DDZ2";
 import "./App.less";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/gd" element={<GuanDanGame />} />
         <Route path="/dglz" element={<DaGuaiLuZi />} />
         <Route path="/home2" element={<Home2 />} />
+        <Route path="/ddz2" element={<DDZ2 />} />
       </Routes>
     </BrowserRouter>
   );

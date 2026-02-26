@@ -89,15 +89,12 @@
   box-shadow: 0 4px 6px rgba(74, 4, 4, 0.4);
 }
 
-/* 用户菜单 */
-.user-menu {
+/* 用户按钮 */
+.user-btn {
   position: absolute;
   top: 1.2rem;
   right: 1.5rem;
   z-index: 100;
-}
-
-.user-icon {
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -112,54 +109,27 @@
   transition:
     background 0.2s,
     color 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    transform 0.15s;
 }
 
-.user-menu:hover .user-icon {
+.user-btn:hover {
   background: #fff;
   color: #374151;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  transform: scale(1.05);
 }
 
-.user-dropdown {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  right: 0;
-  min-width: 120px;
-  background: #fff;
-  border-radius: 0.75rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  padding: 0.4rem 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-6px);
-  transition:
-    opacity 0.2s,
-    transform 0.2s,
-    visibility 0.2s;
+.user-btn:active {
+  transform: scale(0.95);
 }
 
-.user-menu:hover .user-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 0.6rem 1.2rem;
-  border: none;
-  background: none;
-  font-size: 0.95rem;
-  color: #374151;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s;
-}
-
-.dropdown-item:hover {
-  background: #f3f4f6;
+/* 用户头像字母 */
+.user-avatar-letter {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #d97706;
+  line-height: 1;
 }
 
 /* Theme switch button */

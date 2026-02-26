@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./home2.less";
 
@@ -35,6 +35,57 @@ function Home2() {
     enc: ENCRYPTIONS[0],
     node: NODES[0],
   });
+
+  // -------- rotary knob → scanline intensity --------
+  const [knobAngle, setKnobAngle] = useState(90); // 0-270°, default 90° (right)
+  const knobRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const startAngle = useRef(0);
+  const startKnob = useRef(0);
+
+  // map angle (0-270) → scanline opacity (0.05 - 1.0)
+  const scanlineIntensity = 0.05 + (knobAngle / 270) * 0.95;
+
+  const getPointerAngle = useCallback(
+    (e: PointerEvent | React.PointerEvent) => {
+      const el = knobRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      return Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
+    },
+    [],
+  );
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      dragging.current = true;
+      startAngle.current = getPointerAngle(e);
+      startKnob.current = knobAngle;
+    },
+    [getPointerAngle, knobAngle],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging.current) return;
+      const current = getPointerAngle(e);
+      let delta = current - startAngle.current;
+      // normalise to -180..180
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      const next = Math.min(270, Math.max(0, startKnob.current + delta));
+      setKnobAngle(next);
+    },
+    [getPointerAngle],
+  );
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -86,9 +137,9 @@ function Home2() {
               </div>
             </div>
 
-            {/* frequency */}
+            {/* opacity knob */}
             <div className="frequency-section">
-              <span className="section-label">Frequency</span>
+              <span className="section-label">Signal</span>
               <div className="rotary-container">
                 <div className="tick-marks">
                   {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
@@ -98,7 +149,14 @@ function Home2() {
                     />
                   ))}
                 </div>
-                <div className="rotary-knob" />
+                <div
+                  className="rotary-knob"
+                  ref={knobRef}
+                  style={{ transform: `rotate(${knobAngle}deg)` }}
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                />
               </div>
             </div>
 
@@ -115,7 +173,10 @@ function Home2() {
           {/* ========== CRT screen ========== */}
           <div className="crt-container">
             <div className="screen-curve" />
-            <div className="crt-overlay" />
+            <div
+              className="crt-overlay"
+              style={{ opacity: scanlineIntensity }}
+            />
             <div className="crt-vignette" />
 
             <div className="crt-screen">
@@ -148,7 +209,7 @@ function Home2() {
                   {/* 斗地主 */}
                   <div
                     className="card-group card-group-green"
-                    onClick={() => navigate("/ddz")}
+                    onClick={() => navigate("/ddz2")}
                   >
                     <div className="card-wrapper">
                       <div className="card-shadow" />
@@ -273,7 +334,7 @@ function Home2() {
         </div>
 
         {/* bottom badge */}
-        <div className="bottom-badge">Property of Lumon Industries</div>
+        <div className="bottom-badge">Property of LuZi TiYu</div>
       </div>
     </div>
   );

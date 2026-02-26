@@ -1,0 +1,393 @@
+// DDZ2 – Import Home2 frame styles + game-specific overrides (colors only)
+@import "../Home2/home2.less";
+
+// Re-scope .home2-page styles to .ddz2-page
+.ddz2-page {
+  &:extend(.home2-page all);
+
+  // ========== Game-specific styles inside CRT screen ==========
+
+  .game-container-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+  }
+
+  // Message bar
+  .message-box {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(14, 42, 71, 0.25);
+    border-radius: 4px;
+    padding: 4px 12px;
+    margin-bottom: 8px;
+    text-align: center;
+
+    .message-text {
+      color: #cddae8;
+      font-family: @font-mono;
+      font-size: clamp(0.6rem, 1.2vw, 0.85rem);
+      margin: 0;
+      text-shadow:
+        0 0 1px rgba(255, 255, 255, 0.2),
+        0 0 4px currentColor;
+    }
+  }
+
+  // Three-column game area (CPU1 | Table | CPU2)
+  .game-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  // Base cards (底牌)
+  .base-cards-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+  .base-cards-panel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(14, 42, 71, 0.08);
+    border: 1px solid rgba(14, 42, 71, 0.15);
+    border-radius: 4px;
+    padding: 4px 10px;
+    .panel-title {
+      font-family: @font-mono;
+      font-size: 10px;
+      color: #94a3b8;
+      margin: 0;
+      letter-spacing: 0.1em;
+    }
+  }
+  .base-cards-container {
+    display: flex;
+    gap: 3px;
+  }
+  .card-placeholder {
+    width: clamp(30px, 4vw, 45px);
+    height: clamp(44px, 5.8vw, 65px);
+    border: 1px dashed rgba(148, 163, 184, 0.3);
+    border-radius: 3px;
+    background: rgba(14, 42, 71, 0.05);
+  }
+
+  .side-player {
+    width: auto;
+    min-width: 90px;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  .center-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .table-area {
+    width: 100%;
+    min-height: 80px;
+    background: rgba(14, 42, 71, 0.06);
+    border: 1px dashed rgba(14, 42, 71, 0.18);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+
+    .table-title {
+      font-size: clamp(0.5rem, 0.9vw, 0.7rem);
+      color: #94a3b8;
+      font-family: @font-mono;
+      margin: 0 0 4px;
+    }
+    .game-stats-inline {
+      font-size: 0.8em;
+      opacity: 0.6;
+      margin-left: 8px;
+    }
+    .table-info {
+      font-size: clamp(0.45rem, 0.8vw, 0.65rem);
+      color: #94a3b8;
+      opacity: 0.7;
+      margin: 0 0 4px;
+      font-family: @font-mono;
+    }
+    .table-empty {
+      font-size: clamp(0.5rem, 0.9vw, 0.7rem);
+      color: #94a3b8;
+      opacity: 0.4;
+      font-family: @font-mono;
+      margin: 0;
+    }
+    .table-cards {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  // Player stats inline
+  .player-stats-inline {
+    font-size: 0.8em;
+    opacity: 0.6;
+    margin-left: 8px;
+  }
+
+  // Override PlayerCard.less global styles for CRT theme
+  .player-info {
+    background: rgba(14, 42, 71, 0.15);
+    border: 1px solid rgba(14, 42, 71, 0.25);
+    backdrop-filter: none;
+    box-shadow: none;
+    padding: 6px;
+    border-radius: 6px;
+
+    .player-name {
+      font-size: clamp(0.55rem, 1vw, 0.75rem);
+      font-family: @font-mono;
+      color: #cddae8;
+    }
+    .player-stats {
+      font-size: clamp(0.45rem, 0.8vw, 0.6rem);
+      font-family: @font-mono;
+      color: #94a3b8;
+    }
+
+    &.active {
+      border-color: rgba(100, 139, 196, 0.5);
+      box-shadow: 0 0 8px rgba(100, 139, 196, 0.15);
+      background: rgba(14, 42, 71, 0.25);
+    }
+
+    &.landlord {
+      border-color: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+
+      &::after {
+        font-size: 1.2rem;
+        top: -14px;
+        right: -8px;
+      }
+    }
+
+    // Winner = golden, overrides landlord red
+    &.winner {
+      border-color: #facc15 !important;
+      box-shadow: 0 0 18px rgba(250, 204, 21, 0.7) !important;
+      animation: ddz2-winner-pulse 1.2s ease-in-out infinite;
+    }
+  }
+
+  // Player hand
+  .player-hand {
+    margin-top: auto;
+    background: rgba(14, 42, 71, 0.08);
+    border: 1px solid rgba(14, 42, 71, 0.18);
+    border-radius: 6px;
+    padding: 8px;
+
+    &.active {
+      border-color: rgba(100, 139, 196, 0.45);
+      box-shadow: 0 0 10px rgba(100, 139, 196, 0.12);
+    }
+
+    &.winner {
+      border-color: #facc15 !important;
+      box-shadow: 0 0 20px rgba(250, 204, 21, 0.8);
+      animation: ddz2-winner-pulse 1.2s ease-in-out infinite;
+    }
+
+    &.landlord {
+      border-color: #ef4444;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+      position: relative;
+
+      &::after {
+        content: "👑";
+        position: absolute;
+        top: -20px;
+        right: -12px;
+        font-size: 1.4rem;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+      }
+    }
+
+    .hand-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 4px;
+
+      .hand-title {
+        font-size: clamp(0.5rem, 1vw, 0.7rem);
+        font-family: @font-mono;
+        color: #94a3b8;
+        margin: 0;
+        letter-spacing: 0.1em;
+      }
+    }
+  }
+
+  .hand-cards {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-height: 50px;
+  }
+
+  // Playing cards – Home2 color palette
+  .card {
+    width: clamp(40px, 5.5vw, 65px);
+    height: clamp(58px, 8vw, 95px);
+    background: linear-gradient(145deg, #fff, #f0f0eb);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4px;
+    position: relative;
+    box-shadow:
+      1px 1px 3px rgba(0, 0, 0, 0.25),
+      -1px -1px 2px rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: transform 0.12s;
+    user-select: none;
+    cursor: default;
+    font-family: @font-display;
+
+    &.red {
+      color: #dc2626;
+    }
+    &.black {
+      color: #1f2937;
+    }
+
+    &.selectable:hover {
+      transform: translateY(-8px);
+      cursor: pointer;
+      box-shadow:
+        1px 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 6px rgba(100, 139, 196, 0.25);
+    }
+    &.selected {
+      transform: translateY(-14px);
+      box-shadow: 0 0 8px rgba(100, 139, 196, 0.5);
+      border: 2px solid #648bc4;
+    }
+
+    .card-rank {
+      font-size: clamp(11px, 1.6vw, 18px);
+      font-weight: bold;
+      line-height: 1;
+    }
+    .card-suit {
+      font-size: clamp(9px, 1.3vw, 16px);
+      line-height: 1;
+    }
+    .card-top-left {
+      text-align: left;
+    }
+    .card-bottom-right {
+      text-align: right;
+      transform: rotate(180deg);
+    }
+  }
+
+  // Buttons – CRT terminal style (same as Home2's theme-switch-crt)
+  .game-container-inner .btn {
+    font-family: @font-mono;
+    font-size: clamp(0.45rem, 0.85vw, 0.7rem);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 2px;
+    padding: 0.25em 0.7em;
+    cursor: pointer;
+    transition:
+      color 0.2s,
+      border-color 0.2s,
+      text-shadow 0.2s;
+
+    &:hover {
+      color: #648bc4;
+      border-color: #648bc4;
+      text-shadow: 0 0 4px rgba(100, 139, 196, 0.4);
+    }
+    &:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    &.btn-blue {
+      color: #648bc4;
+      border-color: rgba(100, 139, 196, 0.4);
+      &:hover {
+        background: rgba(100, 139, 196, 0.08);
+      }
+    }
+    &.btn-green {
+      color: @crt-green;
+      border-color: rgba(34, 179, 0, 0.3);
+      &:hover {
+        background: rgba(34, 179, 0, 0.08);
+        text-shadow: 0 0 4px rgba(34, 179, 0, 0.4);
+      }
+    }
+  }
+
+  .button-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  // Footer terminate button
+  .footer-terminate {
+    font-family: @font-mono;
+    font-size: clamp(0.45rem, 0.85vw, 0.7rem);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 2px;
+    padding: 0.25em 0.7em;
+    cursor: pointer;
+    transition:
+      color 0.2s,
+      border-color 0.2s;
+    &:hover {
+      color: #dc2626;
+      border-color: #dc2626;
+    }
+  }
+}
+
+// Winner pulse animation
+@keyframes ddz2-winner-pulse {
+  0% {
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+  }
+}
